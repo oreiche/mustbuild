@@ -1,0 +1,335 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sat, 10 Feb 2024 16:32:33 +0100
+Subject: [preprocess] FileRoot: Use Jsonnet for reading files
+
+---
+ etc/dev/TARGETS                         |   1 +
+ etc/repos.json                          |   1 +
+ src/buildtool/file_system/TARGETS       |   5 +-
+ src/buildtool/file_system/builtins.h    |   2 +
+ src/buildtool/file_system/file_root.cpp | 213 ++++++++++++++++++++++++
+ src/buildtool/file_system/file_root.hpp |  16 ++
+ 6 files changed, 237 insertions(+), 1 deletion(-)
+ create mode 100644 src/buildtool/file_system/builtins.h
+ create mode 100644 src/buildtool/file_system/file_root.cpp
+
+diff --git a/etc/dev/TARGETS b/etc/dev/TARGETS
+index 3d194b96..c3bd22b8 100644
+--- a/etc/dev/TARGETS
++++ b/etc/dev/TARGETS
+@@ -19,6 +19,7 @@
+     , ["@", "fmt", "", "fmt"]
+     , ["@", "cli11", "", "cli11"]
+     , ["@", "json", "", "json"]
++    , ["@", "jsonnet", "", "jsonnet"]
+     , ["", "libgit2"]
+     , ["", "libcurl"]
+     , ["", "libarchive"]
+diff --git a/etc/repos.json b/etc/repos.json
+index 11fa1894..e6596308 100644
+--- a/etc/repos.json
++++ b/etc/repos.json
+@@ -16,6 +16,7 @@
+       , "protoc": "protobuf"
+       , "libcurl": "com_github_curl_curl"
+       , "libarchive": "com_github_libarchive_libarchive"
++      , "jsonnet": "jsonnet"
+       }
+     , "bootstrap": {"link": ["-pthread"]}
+     , "bootstrap_local": {"link": ["-pthread"]}
+diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
+index b8b86d29..6cad73eb 100644
+--- a/src/buildtool/file_system/TARGETS
++++ b/src/buildtool/file_system/TARGETS
+@@ -146,7 +146,8 @@
+ , "file_root":
+   { "type": ["@", "rules", "CC", "library"]
+   , "name": ["file_root"]
+-  , "hdrs": ["file_root.hpp"]
++  , "hdrs": ["file_root.hpp", ["src/jsonnet", "builtins.h"]]
++  , "srcs": ["file_root.cpp"]
+   , "deps":
+     [ "git_tree"
+     , "file_system_manager"
+@@ -154,8 +155,10 @@
+     , ["src/buildtool/compatibility", "compatibility"]
+     , ["src/buildtool/logging", "log_level"]
+     , ["src/buildtool/logging", "logging"]
++    , ["src/buildtool/multithreading", "atomic_value"]
+     , ["@", "gsl", "", "gsl"]
+     , ["@", "json", "", "json"]
++    , ["@", "jsonnet", "", "jsonnet"]
+     , ["src/utils/cpp", "concepts"]
+     ]
+   , "stage": ["src", "buildtool", "file_system"]
+diff --git a/src/buildtool/file_system/builtins.h b/src/buildtool/file_system/builtins.h
+new file mode 100644
+index 00000000..5995b8b9
+--- /dev/null
++++ b/src/buildtool/file_system/builtins.h
+@@ -0,0 +1,2 @@
++// dummy file used by local analysis (e.g., clang-tidy)
++static constexpr auto kBuiltins = "";
+diff --git a/src/buildtool/file_system/file_root.cpp b/src/buildtool/file_system/file_root.cpp
+new file mode 100644
+index 00000000..1d54b9c1
+--- /dev/null
++++ b/src/buildtool/file_system/file_root.cpp
+@@ -0,0 +1,213 @@
++#include "src/buildtool/file_system/file_root.hpp"
++
++#include <cstring>
++#include <filesystem>
++#include <fstream>
++#include <string>
++
++#include "fmt/core.h"
++#include "gsl/gsl"
++#include "nlohmann/json.hpp"
++
++#ifndef BOOTSTRAP_BUILD_TOOL
++extern "C" {
++#include "libjsonnet.h"
++}
++
++#include "builtins.h"
++
++namespace {
++
++// Google is just brilliant. They managed to change the import callback type
++// while only bumping their minor version (v0.18.0 -> v0.19.0). The following
++// code tries to detect which callback type version we are dealing with.
++
++// Import callback type version 0 (used in < v0.19.0)
++using JsonnetImportCallback_v0 =
++    auto(void*, const char*, const char*, char**, int*) -> char*;
++
++// Import callback type version 1 (used in >= v0.19.0)
++using JsonnetImportCallback_v1 =
++    auto(void*, const char*, const char*, char**, char**, size_t*) -> int;
++
++// Detect callback type version (0, 1, or -1 on failure)
++constexpr int kCallbackVersion =
++    (std::is_same_v<JsonnetImportCallback, JsonnetImportCallback_v0>)   ? 0
++    : (std::is_same_v<JsonnetImportCallback, JsonnetImportCallback_v1>) ? 1
++                                                                        : -1;
++static_assert(kCallbackVersion != -1, "Unknown JsonnetImportCallback type");
++
++}  // namespace
++
++namespace Jsonnet {
++
++class Compiler {
++  public:
++    using JsonnetVmPtr =
++        std::unique_ptr<JsonnetVm, std::function<void(JsonnetVm*)>>;
++
++    struct Context {
++        JsonnetVmPtr vm;
++        gsl::not_null<FileRoot const*> root;
++        [[nodiscard]] auto InitBuffer(std::string const& from) const -> char* {
++            auto length = from.size() + 1;  // including null character
++            auto* buf = jsonnet_realloc(&(*vm), nullptr, length);
++            std::memcpy(buf, from.data(), length);
++            return buf;
++        };
++        void FreeBuffer(char* buf) const { jsonnet_realloc(&(*vm), buf, 0); }
++    };
++
++  private:
++    static inline auto const kJsonnetVmDeleter = [](JsonnetVm* vm) {
++        if (vm != nullptr) {
++            jsonnet_destroy(vm);
++        }
++    };
++
++    static auto InjectBuiltins(std::string const& input) -> std::string {
++        return fmt::format("{}{}", kBuiltins, input);
++    }
++
++  public:
++    explicit Compiler(Context ctx)
++        : ctx_{std::make_unique<Context>(std::move(ctx))} {
++        jsonnet_import_callback(
++            &(*ctx_->vm), &ImportFromRoot<kCallbackVersion>, &(*ctx_));
++    }
++
++    [[nodiscard]] static auto Create(gsl::not_null<FileRoot const*> root)
++        -> CompilerPtr {
++        auto vm = JsonnetVmPtr{jsonnet_make(), kJsonnetVmDeleter};
++        if (not vm) {
++            Logger::Log(LogLevel::Error, "creating jsonnet vm failed.");
++            return nullptr;
++        }
++
++        return std::make_shared<Compiler>(Context{std::move(vm), root});
++    }
++    [[nodiscard]] auto Compile(std::string const& content,
++                               std::filesystem::path const& path)
++        -> std::optional<std::string> {
++        auto data_in = InjectBuiltins(content);
++        int error{0};
++        auto* data_out = jsonnet_evaluate_snippet(
++            &(*ctx_->vm), path.c_str(), data_in.c_str(), &error);
++
++        auto result = std::string{data_out};
++        ctx_->FreeBuffer(data_out);
++
++        if (error == 0) {
++            return result;
++        }
++
++        Logger::Log(LogLevel::Error,
++                    "jsonnet compilation failed with error:\n{}: {}",
++                    error,
++                    result);
++
++        return std::nullopt;
++    }
++
++  private:
++    std::unique_ptr<Context> ctx_;
++
++    // Callback signature for callback type version 0 (<v0.19.0)
++    template <int kCallbackVersion>
++        requires(kCallbackVersion == 0)
++    static auto ImportFromRoot(void* user_data,
++                               const char* imported_from,
++                               const char* import_path,
++                               char** found_path,
++                               int* success) -> char* {
++        return ImportFromRootImpl(
++            user_data, imported_from, import_path, found_path, success);
++    }
++
++    // Callback signature for callback type version 1 (>=v0.19.0)
++    template <int kCallbackVersion>
++        requires(kCallbackVersion == 1)
++    static auto ImportFromRoot(void* user_data,
++                               const char* imported_from,
++                               const char* import_path,
++                               char** found_path,
++                               char** buf,
++                               size_t* buflen) -> int {
++        int success{};
++        *buf = ImportFromRootImpl(
++            user_data, imported_from, import_path, found_path, &success);
++        *buflen = strlen(*buf);
++        return success == 1 ? 0 : 1;
++    }
++
++    static auto ImportFromRootImpl(void* user_data,
++                                   const char* imported_from,
++                                   const char* import_path,
++                                   char** found_path,
++                                   int* success) -> char* {
++        auto const* ctx = reinterpret_cast<Context*>(user_data);  // NOLINT
++
++        auto const path = std::filesystem::path{import_path};
++        auto const cwd = std::filesystem::path{imported_from};
++
++        std::string found{};
++        std::optional<std::string> content{};
++
++        if (path.is_relative()) {
++            // lookup in root, relative to cwd
++            auto const full_path = cwd / path;
++            Logger::Log(LogLevel::Trace, "Try import /{}", full_path.string());
++            if ((content = ctx->root->ReadContent(full_path))) {
++                found = full_path.string();
++            }
++        }
++        else {
++            // lookup in root, absolute
++            auto const rel_path =
++                std::filesystem::proximate(path, path.root_path());
++            Logger::Log(LogLevel::Trace, "Try import /{}", rel_path.string());
++            if ((content = ctx->root->ReadContent(rel_path))) {
++                found = rel_path.string();
++            }
++        }
++
++        if (content) {
++            *found_path = ctx->InitBuffer(found);
++            *success = 1;
++            return ctx->InitBuffer(InjectBuiltins(*content));
++        }
++
++        Logger::Log(LogLevel::Error, "cannot read import {}", path.string());
++
++        *success = 0;
++        return nullptr;
++    }
++};
++
++}  // namespace Jsonnet
++
++#endif  // BOOTSTRAP_BUILD_TOOL
++
++[[nodiscard]] auto FileRoot::ReadJSON(std::filesystem::path const& file_path)
++    const noexcept -> std::optional<std::string> {
++    if (auto content = ReadContent(file_path)) {
++        return ReadJSON(*content, file_path);
++    }
++    return std::nullopt;
++}
++
++[[nodiscard]] auto FileRoot::ReadJSON(std::string const& file_content,
++                                      std::filesystem::path const& file_path)
++    const noexcept -> std::optional<std::string> {
++#ifdef BOOTSTRAP_BUILD_TOOL
++    (void)file_path;
++    return file_content;
++#else
++    auto compiler = compiler_.SetOnceAndGet(
++        [root = this]() { return Jsonnet::Compiler::Create(root); });
++    if (compiler) {
++        return compiler->Compile(file_content, file_path);
++    }
++    return std::nullopt;
++#endif  // BOOTSTRAP_BUILD_TOOL
++}
+diff --git a/src/buildtool/file_system/file_root.hpp b/src/buildtool/file_system/file_root.hpp
+index 08779e8e..04e17b34 100644
+--- a/src/buildtool/file_system/file_root.hpp
++++ b/src/buildtool/file_system/file_root.hpp
+@@ -31,8 +31,14 @@
+ #include "src/buildtool/file_system/git_tree.hpp"
+ #include "src/buildtool/logging/log_level.hpp"
+ #include "src/buildtool/logging/logger.hpp"
++#include "src/buildtool/multithreading/atomic_value.hpp"
+ #include "src/utils/cpp/concepts.hpp"
+ 
++namespace Jsonnet {
++class Compiler;
++using CompilerPtr = std::shared_ptr<Compiler>;
++}  // namespace Jsonnet
++
+ /// FilteredIterator is an helper class to allow for iteration over
+ /// directory-only or file-only entries stored inside the class
+ /// DirectoryEntries. Internally, DirectoryEntries holds a
+@@ -514,6 +520,15 @@ class FileRoot {
+         return DirectoryEntries{DirectoryEntries::pairs_t{}};
+     }
+ 
++    /// \brief Read JSON content of file
++    [[nodiscard]] auto ReadJSON(std::filesystem::path const& file_path)
++        const noexcept -> std::optional<std::string>;
++
++    /// \brief Read JSON content from string (path is for error messages only)
++    [[nodiscard]] auto ReadJSON(std::string const& file_content,
++                                std::filesystem::path const& file_path)
++        const noexcept -> std::optional<std::string>;
++
+     [[nodiscard]] auto BlobType(std::filesystem::path const& file_path)
+         const noexcept -> std::optional<ObjectType> {
+         if (std::holds_alternative<git_root_t>(root_)) {
+@@ -734,6 +749,7 @@ class FileRoot {
+     // directories instead of erroring out. This means implicitly also that
+     // there are no more fast tree lookups, i.e., tree traversal is a must.
+     bool ignore_special_{};
++    mutable AtomicValue<Jsonnet::CompilerPtr> compiler_{};
+ };
+ 
+ #endif  // INCLUDED_SRC_BUILDTOOL_FILE_SYSTEM_FILE_ROOT_HPP
+-- 

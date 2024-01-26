@@ -1,0 +1,11 @@
+{
+  // Target "helloworld"
+  helloworld: {
+    // Use rule ["CC", "binary"] from binding "rules"
+    type: ref_ext('rules', 'CC', 'binary'),
+    // Binary name: "helloworld"
+    name: 'helloworld',
+    // Source files
+    srcs: ['helloworld.cpp'],
+  },
+}

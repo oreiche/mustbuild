@@ -1,0 +1,74 @@
+// Options supported by this project (with documentation)
+local _options = {
+  OS: ['Operating system to build for (default: "linux")'],
+  ARCH: ['Host architecture for build (default: "x86_64")'],
+  TARGET_ARCH: ['Target architecture for build (default: ARCH)'],
+  BUILD_SHARED: ['Build shared libraries (default: false)'],
+  TOOLCHAIN_CONFIG: lines(|||
+    Toolchain configuration map (default: {"FAMILY":"generic"}).
+      Set key "FAMILY" to either "gnu", "clang", or "generic"
+  |||),
+  DEBUG: ['Build in debug mode (default: false)'],
+  ENV: ['Environment variable map (default: {})'],
+  USE_FMTLIB: ['Use fmtlib for string format (default: false)'],
+};
+
+
+// Public targets of this project (typically "export" or "install" targets).
+// When importing projects, ensure to only use their public (exported) targets!
+{
+  // Exported "helloworld" binary
+  helloworld: {
+    type: 'export',
+    flexible_config: _options,
+    target: ref('apps', 'helloworld'),
+  },
+
+  // Exported "libgreet" library
+  libgreet: {
+    type: 'export',
+    flexible_config: _options,
+    target: ref('libs/greet', 'greet'),
+  },
+
+  // Installed applications (helloworld)
+  APPS: {
+    // Rule "install-with-deps" creates a directory structure (bin,lib) and
+    // includes public dependencies.
+    type: ref_ext('rules', 'CC', 'install-with-deps'),
+    // Install export target "helloworld"
+    targets: ['helloworld'],
+  },
+
+  // Installed public libraries (libgreet)
+  LIBS: {
+    // Rule "install-with-deps" creates a directory structure (lib,include),
+    // includes public dependencies, and generates pkg-config files.
+    type: ref_ext('rules', 'CC', 'install-with-deps'),
+    // Install export target "libgreet"
+    targets: ['libgreet'],
+  },
+
+  // Installed test reports ("meta target" combining all test reports)
+  TESTS: {
+    type: 'install',
+    // Taint this target with 'test' so it can depend on other targets that are
+    // tainted with 'test' (all test-targets are implicity tainted with 'test').
+    tainted: 'test',
+    // Dependencies (test targets to collect and combine reports from)
+    deps: [
+      ref('test', 'test_libgreet'),
+      ref('test', 'test_helloworld'),
+    ],
+  },
+
+  // Installed headers of external libraries (for development/intellisense)
+  DEV: {
+    type: ref_ext('rules', 'CC', 'install-with-deps'),
+    'hdrs-only': true,
+    targets: [
+      ref_ext('fmtlib', '', 'fmt'),
+      ref_ext('gtest', '', 'gtest_main'),
+    ],
+  },
+}

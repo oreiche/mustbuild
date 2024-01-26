@@ -1,0 +1,96 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 31 Mar 2024 20:14:37 +0200
+Subject: [targets] export: Support doc for flexible_config
+
+---
+ .../build_engine/target_map/export.cpp        | 21 +++++++++++++++-
+ src/buildtool/main/describe.cpp               | 25 ++++++++++++++++---
+ 2 files changed, 42 insertions(+), 4 deletions(-)
+
+diff --git a/src/buildtool/build_engine/target_map/export.cpp b/src/buildtool/build_engine/target_map/export.cpp
+index 7142bfa8..50a5679d 100644
+--- a/src/buildtool/build_engine/target_map/export.cpp
++++ b/src/buildtool/build_engine/target_map/export.cpp
+@@ -14,8 +14,11 @@
+ 
+ #include "src/buildtool/build_engine/target_map/export.hpp"
+ 
++#include <optional>
++#include <string>
+ #include <unordered_set>
+ #include <utility>  // std::move
++#include <vector>
+ 
+ #include "src/buildtool/build_engine/base_maps/field_reader.hpp"
+ #include "src/buildtool/build_engine/expression/configuration.hpp"
+@@ -109,7 +112,23 @@ void ExportRule(
+     const gsl::not_null<BuildMaps::Target::ResultTargetMap*> result_map) {
+     auto desc = BuildMaps::Base::FieldReader::CreatePtr(
+         desc_json, key.target, "export target", logger);
+-    auto flexible_vars = desc->ReadStringList("flexible_config");
++    auto flexible_vars = std::optional<std::vector<std::string>>{};
++
++    // accept object with documentation for flexible vars
++    auto const doc_obj = desc_json.find("flexible_config");
++    if (doc_obj != desc_json.end() and doc_obj->is_object()) {
++        flexible_vars = std::vector<std::string>{};
++        flexible_vars->reserve(doc_obj->size());
++        std::transform(doc_obj->items().begin(),
++                       doc_obj->items().end(),
++                       std::back_inserter(*flexible_vars),
++                       [](auto const& item) { return item.key(); });
++    }
++
++    if (not flexible_vars) {
++        flexible_vars = desc->ReadStringList("flexible_config");
++    }
++
+     if (not flexible_vars) {
+         return;
+     }
+diff --git a/src/buildtool/main/describe.cpp b/src/buildtool/main/describe.cpp
+index 659ec3ab..3c2b98c0 100644
+--- a/src/buildtool/main/describe.cpp
++++ b/src/buildtool/main/describe.cpp
+@@ -16,6 +16,7 @@
+ 
+ #include <iostream>
+ #include <optional>
++#include <unordered_set>
+ 
+ #include "nlohmann/json.hpp"
+ #include "src/buildtool/build_engine/base_maps/rule_map.hpp"
+@@ -433,11 +434,29 @@ auto DescribeTarget(BuildMaps::Target::ConfiguredTarget const& id,
+             if (config_doc_it != desc.end() and config_doc_it->is_object()) {
+                 config_doc = *config_doc_it;
+             }
++            auto config_vars = std::vector<std::string>{};
+             auto flexible_config = desc.find("flexible_config");
+-            if (flexible_config != desc.end() and
+-                (not flexible_config->empty())) {
++            if (flexible_config != desc.end()) {
++                if (flexible_config->is_array()) {
++                    for (auto const& el : *flexible_config) {
++                        if (el.is_string()) {
++                            config_vars.emplace_back(el.get<std::string>());
++                        }
++                    }
++                }
++                else if (flexible_config->is_object()) {
++                    for (auto const& [key, val] : flexible_config->items()) {
++                        config_doc.push_back(
++                            nlohmann::json::object_t::value_type{key, val});
++                        config_vars.emplace_back(key);
++                    }
++                }
++            }
++
++            if (not config_vars.empty()) {
+                 std::cout << " Flexible configuration variables\n";
+-                PrintFields(*flexible_config, config_doc, " - ", "   | ");
++                PrintFields(
++                    nlohmann::json(config_vars), config_doc, " - ", "   | ");
+             }
+         }
+         return kExitSuccess;
+-- 

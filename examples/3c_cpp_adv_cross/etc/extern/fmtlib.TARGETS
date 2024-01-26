@@ -1,0 +1,22 @@
+// Target definitions
+{
+  // Native target "fmt"
+  fmt: {
+    // Use rule ["CC", "library"] from binding "rules"
+    type: ref_ext('rules', 'CC', 'library'),
+    // We want to read variable 'DEBUG'.
+    arguments_config: ['DEBUG'],
+    // Library name: libfmt.a
+    name: 'fmt',
+    // Library type: static
+    shared: false,
+    // Public headers
+    hdrs: [ref('include', 'public_headers')],
+    // Source files
+    srcs: ['src/os.cc', 'src/format.cc'],
+    // Private compile flags (depends on 'DEBUG')
+    'private-cflags': select(var('DEBUG'),
+                             ['-O0', '-g'],
+                             ['-O2', '-DNDEBUG']),
+  },
+}

@@ -1,0 +1,2910 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sat, 20 Jan 2024 11:26:25 +0100
+Subject: [must] Build single binary for all subcommands
+
+---
+ TARGETS                                       |  66 +--
+ bin/bootstrap.py                              |  14 +-
+ bin/just-deduplicate-repos.py                 | 222 ----------
+ bin/just-import-git.py                        | 389 ------------------
+ etc/repos.json                                |   4 +-
+ share/man/just-deduplicate-repos.1.md         |  84 ----
+ share/man/just-import-git.1.md                | 108 -----
+ ...y-config.5.md => must-backend-config.5.md} |  18 +-
+ share/man/{just.1.md => must-backend.5.md}    |  77 ++--
+ ...t-graph-file.5.md => must-graph-file.5.md} |   8 +-
+ ...onfig.5.md => must-repository-config.5.md} |  28 +-
+ ...rve-config.5.md => must-serve-config.5.md} |  20 +-
+ share/man/{just-mr.1.md => must.1.md}         | 157 ++++---
+ share/man/{just-mrrc.5.md => mustrc.5.md}     |  95 ++---
+ ...{just_complete.bash => must_complete.bash} |  60 ++-
+ .../execution_engine/executor/executor.hpp    |   3 +
+ src/buildtool/main/TARGETS                    |  24 +-
+ src/buildtool/main/cli.cpp                    |  41 +-
+ src/buildtool/main/cli.hpp                    |   5 +
+ src/buildtool/main/main.cpp                   |  10 +-
+ src/buildtool/storage/config.hpp              |  11 +-
+ src/other_tools/just_mr/TARGETS               |   7 +-
+ src/other_tools/just_mr/cli.hpp               |  18 +-
+ src/other_tools/just_mr/launch.cpp            |  55 ++-
+ src/other_tools/just_mr/main.cpp              |  51 ++-
+ src/other_tools/just_mr/rc.cpp                |  40 +-
+ src/other_tools/just_mr/rc.hpp                |   2 +-
+ src/other_tools/just_mr/setup.cpp             |   3 +-
+ src/other_tools/just_mr/setup_utils.cpp       |   3 +-
+ src/other_tools/just_mr/utils.hpp             |  40 +-
+ 30 files changed, 426 insertions(+), 1237 deletions(-)
+ delete mode 100755 bin/just-deduplicate-repos.py
+ delete mode 100755 bin/just-import-git.py
+ delete mode 100644 share/man/just-deduplicate-repos.1.md
+ delete mode 100644 share/man/just-import-git.1.md
+ rename share/man/{just-repository-config.5.md => must-backend-config.5.md} (91%)
+ rename share/man/{just.1.md => must-backend.5.md} (92%)
+ rename share/man/{just-graph-file.5.md => must-graph-file.5.md} (97%)
+ rename share/man/{just-mr-repository-config.5.md => must-repository-config.5.md} (93%)
+ rename share/man/{just-serve-config.5.md => must-serve-config.5.md} (93%)
+ rename share/man/{just-mr.1.md => must.1.md} (66%)
+ rename share/man/{just-mrrc.5.md => mustrc.5.md} (71%)
+ rename share/{just_complete.bash => must_complete.bash} (79%)
+
+diff --git a/TARGETS b/TARGETS
+index 9e8d2f82..44bb5f74 100644
+--- a/TARGETS
++++ b/TARGETS
+@@ -1,7 +1,7 @@
+ { "":
+   { "type": "export"
+-  , "target": "installed just"
+-  , "doc": ["The just binary."]
++  , "target": "must"
++  , "doc": ["The must binary."]
+   , "flexible_config":
+     [ "ADD_CFLAGS"
+     , "ADD_CXXFLAGS"
+@@ -66,61 +66,11 @@
+       ]
+     }
+   }
+-, "installed just":
+-  {"type": ["@", "rules", "CC", "install-with-deps"], "targets": ["just"]}
+-, "exported-just":
++, "must":
++  {"type": ["@", "rules", "CC", "install-with-deps"], "targets": ["conf-must"]}
++, "exported-must":
+   { "type": "export"
+-  , "target": ["src/buildtool/main", "just"]
+-  , "flexible_config":
+-    [ "OS"
+-    , "ARCH"
+-    , "HOST_ARCH"
+-    , "TARGET_ARCH"
+-    , "DEBUG"
+-    , "TOOLCHAIN_CONFIG"
+-    , "CC"
+-    , "CXX"
+-    , "ADD_CXXFLAGS"
+-    , "ADD_CFLAGS"
+-    , "AR"
+-    , "ENV"
+-    , "FINAL_LDFLAGS"
+-    , "SOURCE_DATE_EPOCH"
+-    , "VERSION_EXTRA_SUFFIX"
+-    , "PKG_CONFIG_ARGS"
+-    ]
+-  }
+-, "just":
+-  { "type": "configure"
+-  , "arguments_config": ["OS", "ARCH", "HOST_ARCH", "TARGET_ARCH"]
+-  , "target": "exported-just"
+-  , "config":
+-    { "type": "let*"
+-    , "bindings":
+-      [ ["OS", {"type": "var", "name": "OS", "default": "linux"}]
+-      , ["ARCH", {"type": "var", "name": "ARCH", "default": "x86_64"}]
+-      , [ "HOST_ARCH"
+-        , { "type": "var"
+-          , "name": "HOST_ARCH"
+-          , "default": {"type": "var", "name": "ARCH"}
+-          }
+-        ]
+-      , [ "TARGET_ARCH"
+-        , { "type": "var"
+-          , "name": "TARGET_ARCH"
+-          , "default": {"type": "var", "name": "ARCH"}
+-          }
+-        ]
+-      ]
+-    , "body":
+-      {"type": "env", "vars": ["OS", "ARCH", "HOST_ARCH", "TARGET_ARCH"]}
+-    }
+-  }
+-, "installed just-mr":
+-  {"type": ["@", "rules", "CC", "install-with-deps"], "targets": ["just-mr"]}
+-, "exported-just-mr":
+-  { "type": "export"
+-  , "target": ["src/other_tools/just_mr", "just-mr"]
++  , "target": ["src/other_tools/just_mr", "must"]
+   , "flexible_config":
+     [ "OS"
+     , "ARCH"
+@@ -139,10 +89,10 @@
+     , "VERSION_EXTRA_SUFFIX"
+     ]
+   }
+-, "just-mr":
++, "conf-must":
+   { "type": "configure"
+   , "arguments_config": ["OS", "ARCH", "HOST_ARCH", "TARGET_ARCH"]
+-  , "target": "exported-just-mr"
++  , "target": "exported-must"
+   , "config":
+     { "type": "let*"
+     , "bindings":
+diff --git a/bin/bootstrap.py b/bin/bootstrap.py
+index 3f6e72c8..2ddcf45d 100755
+--- a/bin/bootstrap.py
++++ b/bin/bootstrap.py
+@@ -38,10 +38,10 @@ DEBUG = os.environ.get("DEBUG")
+ REPOS: str = "etc/repos.json"
+ MAIN_MODULE: str = ""
+ MAIN_TARGET: str = ""
+-MAIN_STAGE: str = "bin/just"
++MAIN_STAGE: str = "bin/must"
+ 
+-LOCAL_LINK_DIRS_MODULE: str = "src/buildtool/main"
+-LOCAL_LINK_DIRS_TARGET: str = "just"
++LOCAL_LINK_DIRS_MODULE: str = "src/other_tools/just_mr"
++LOCAL_LINK_DIRS_TARGET: str = "must"
+ 
+ # architecture related configuration (global variables)
+ g_CONF: Json = {}
+@@ -439,12 +439,12 @@ def bootstrap() -> None:
+     ] + object_files + dep_flags["link"]
+     run(final_cmd, cwd=src_wrkdir)
+     CONF_FILE: str = os.path.join(cast(str, g_WRKDIR), "repo-conf.json")
+-    LOCAL_ROOT: str = os.path.join(cast(str, g_WRKDIR), ".just")
++    LOCAL_ROOT: str = os.path.join(cast(str, g_WRKDIR), ".must")
+     os.makedirs(LOCAL_ROOT, exist_ok=True)
+     distdirs = " --distdir=".join(g_DISTDIR)
+     run([
+         "sh", "-c",
+-        "cp `./bin/just-mr.py --always-file -C %s --local-build-root=%s --distdir=%s setup just` %s"
++        "cp `./bin/just-mr.py --always-file -C %s --local-build-root=%s --distdir=%s setup must` %s"
+         % (REPOS, LOCAL_ROOT, distdirs, CONF_FILE)
+     ],
+         cwd=src_wrkdir)
+@@ -468,8 +468,8 @@ def bootstrap() -> None:
+     OUT: str = os.path.join(cast(str, g_WRKDIR), "out")
+     run([
+         "./out-boot/%s" %
+-        (MAIN_STAGE, ), "install", "-C", CONF_FILE, "-D", CONF_STRING, "-o",
+-        OUT, "--local-build-root", LOCAL_ROOT, MAIN_MODULE, MAIN_TARGET
++        (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",
++        "-D", CONF_STRING, "-o", OUT, MAIN_MODULE, MAIN_TARGET
+     ],
+         cwd=src_wrkdir)
+ 
+diff --git a/bin/just-deduplicate-repos.py b/bin/just-deduplicate-repos.py
+deleted file mode 100755
+index f6bf9548..00000000
+--- a/bin/just-deduplicate-repos.py
++++ /dev/null
+@@ -1,222 +0,0 @@
+-#!/usr/bin/env python3
+-# Copyright 2023 Huawei Cloud Computing Technology Co., Ltd.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-import json
+-import sys
+-
+-from typing import Any, List, Optional
+-
+-# generic JSON type
+-Json = Any
+-
+-def log(*args: str, **kwargs: Any) -> None:
+-    print(*args, file=sys.stderr, **kwargs)
+-
+-def fail(s: str, exit_code: int = 1):
+-    log(f"Error: {s}")
+-    sys.exit(exit_code)
+-
+-
+-def roots_equal(a: Json, b: Json) -> bool:
+-    if a["type"] != b["type"]:
+-        return False
+-    if a["type"] == "file":
+-        return a["path"] == b["path"]
+-    elif a["type"] in ["archive", "zip"]:
+-        return (a["content"] == b["content"]
+-                and a.get("subdir", ".") == b.get("subdir", "."))
+-    elif a["type"] == "git":
+-        return (a["commit"] == b["commit"]
+-                and a.get("subdir", ".") == b.get("subdir", "."))
+-    else:
+-        # unknown repository type, the only safe way is to test
+-        # for full equality
+-        return a == b
+-
+-def get_root(repos: Json, name: str, *, root_name: str="repository",
+-             default_root : Optional[Json]=None) -> Json:
+-    root = repos[name].get(root_name)
+-    if root is None:
+-        if default_root is not None:
+-            return default_root
+-        else:
+-            fail("Did not find mandatory root %s" % (name,))
+-    if isinstance(root, str):
+-        return get_root(repos, root)
+-    return root
+-
+-def local_repos_equal(repos: Json, name_a: str, name_b: str) -> bool:
+-    if name_a == name_b:
+-        return True
+-    root_a = None
+-    root_b = None
+-    for root_name in ["repository",
+-                      "target_root", "rule_root", "expression_root"]:
+-        root_a = get_root(repos, name_a, root_name=root_name,
+-                          default_root = root_a)
+-        root_b = get_root(repos, name_b, root_name=root_name,
+-                          default_root = root_b)
+-        if not roots_equal(root_a, root_b):
+-            return False
+-    for file_name, default_name in [("target_file_name", "TARGETS"),
+-                                    ("rule_file_name", "RULES"),
+-                                    ("expression_file_name", "EXPRESSIONS")]:
+-        fname_a = repos[name_a].get(file_name, default_name)
+-        fname_b = repos[name_b].get(file_name, default_name)
+-        if fname_a != fname_b:
+-            return False
+-    open_names_a = set(repos[name_a].get("bindings", {}).keys())
+-    open_names_b = set(repos[name_b].get("bindings", {}).keys())
+-    if open_names_a != open_names_b:
+-        return False
+-    return True
+-
+-def bisimilar_repos(repos: Json) -> List[List[str]]:
+-    """Compute the maximal bisimulation between the repositories
+-    and return the bisimilarity classes."""
+-    bisim = {}
+-
+-    def is_different(name_a: str, name_b: str) -> bool:
+-        return bisim.get((name_a, name_b), {}).get("different", False)
+-
+-    def mark_as_different(name_a: str, name_b: str):
+-        nonlocal bisim
+-        entry = bisim.get((name_a, name_b),{})
+-        if entry.get("different"):
+-            return
+-        bisim[(name_a, name_b)] = dict(entry, **{"different": True})
+-        also_different = entry.get("different_if", [])
+-        for a, b in also_different:
+-            mark_as_different(a, b)
+-
+-    def register_dependency(name_a: str, name_b: str, dep_a: str, dep_b: str):
+-        pos = (name_a, name_b) if name_a < name_b else (name_b, name_a)
+-        entry = bisim.get(pos, {})
+-        deps = entry.get("different_if", [])
+-        deps.append((dep_a, dep_b))
+-        bisim[pos] = dict(entry, **{"different_if": deps})
+-
+-
+-    names = sorted(repos.keys())
+-    for j in range(len(names)):
+-        b = names[j]
+-        for i in range(j):
+-            a = names[i]
+-            if is_different(a,b):
+-                continue
+-            if not local_repos_equal(repos, names[i], names[j]):
+-                mark_as_different(names[i], names[j])
+-                continue
+-            links_a = repos[a].get("bindings", {})
+-            links_b = repos[b].get("bindings", {})
+-            for link in links_a.keys():
+-                next_a = links_a[link]
+-                next_b = links_b[link]
+-                if next_a != next_b:
+-                    if is_different(next_a, next_b):
+-                        mark_as_different(a,b)
+-                        continue
+-                    else:
+-                        register_dependency(next_a, next_b, a, b)
+-    classes = []
+-    done = {}
+-    for j in reversed(range(len(names))):
+-        name_j = names[j]
+-        if done.get(name_j):
+-            continue
+-        c = [name_j]
+-        for i in range(j):
+-            name_i = names[i]
+-            if not bisim.get((name_i, name_j),{}).get("different"):
+-                c.append(name_i)
+-                done[name_i] = True
+-        classes.append(c)
+-    return classes
+-
+-def dedup(repos: Json, user_keep: List[str]) -> Json:
+-
+-    keep = set(user_keep)
+-    main = repos.get("main")
+-    if isinstance(main, str):
+-        keep.add(main)
+-
+-    def choose_representative(c: List[str]) -> str:
+-        """Out of a bisimilarity class chose a main representative"""
+-        candidates = c
+-        # Keep a repository with a proper root, if any of those has a root.
+-        # In this way, we're not losing actual roots.
+-        with_root = [ n for n in candidates
+-                      if isinstance(repos["repositories"][n]["repository"],
+-                                    dict)]
+-        if with_root:
+-            candidates = with_root
+-
+-        # Prefer to choose a repository we have to keep anyway
+-        keep_entries = set(candidates) & keep
+-        if keep_entries:
+-            candidates = list(keep_entries)
+-
+-        return sorted(candidates,
+-                      key=lambda s: (s.count("/"), len(s), s))[0]
+-
+-    bisim = bisimilar_repos(repos["repositories"])
+-    renaming = {}
+-    for c in bisim:
+-        if len(c) == 1:
+-            continue
+-        rep = choose_representative(c)
+-        for repo in c:
+-            if ((repo not in keep) and (repo != rep)):
+-                renaming[repo] = rep
+-
+-    def final_root_reference(name: str) -> str:
+-        """For a given repository name, return a name than can be used
+-        to name root in the final repository configuration."""
+-        root: Json = repos["repositories"][name]["repository"]
+-        if isinstance(root, dict):
+-            # actual root; can still be merged into a different once, but only
+-            # one with a proper root as well.
+-            return renaming.get(name, name)
+-        elif isinstance(root, str):
+-            return final_root_reference(root)
+-        else:
+-            fail("Invalid root found for %r: %r" % (name, root))
+-
+-    new_repos = {}
+-    for name in repos["repositories"].keys():
+-        if name not in renaming:
+-            desc = repos["repositories"][name]
+-            if "bindings" in desc:
+-                bindings = desc["bindings"]
+-                new_bindings = {}
+-                for k, v in bindings.items():
+-                    if v in renaming:
+-                        new_bindings[k] = renaming[v]
+-                    else:
+-                        new_bindings[k] = v
+-                desc = dict(desc, **{"bindings": new_bindings})
+-            new_roots: Json = {}
+-            for root in ["repository", "target_root", "rule_root"]:
+-                root_val: Json = desc.get(root)
+-                if isinstance(root_val, str) and (root_val in renaming):
+-                    new_roots[root] = final_root_reference(root_val)
+-            desc = dict(desc, **new_roots)
+-            new_repos[name] = desc
+-    return dict(repos, **{"repositories": new_repos})
+-
+-if __name__ == "__main__":
+-    orig = json.load(sys.stdin)
+-    final = dedup(orig, sys.argv[1:])
+-    print(json.dumps(final))
+diff --git a/bin/just-import-git.py b/bin/just-import-git.py
+deleted file mode 100755
+index c362469a..00000000
+--- a/bin/just-import-git.py
++++ /dev/null
+@@ -1,389 +0,0 @@
+-#!/usr/bin/env python3
+-# Copyright 2022 Huawei Cloud Computing Technology Co., Ltd.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-import json
+-import os
+-import subprocess
+-import shutil
+-import sys
+-import tempfile
+-
+-from argparse import ArgumentParser, Namespace
+-from pathlib import Path
+-
+-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, cast
+-
+-# generic JSON type that avoids getter issues; proper use is being enforced by
+-# return types of methods and typing vars holding return values of json getters
+-Json = Dict[str, Any]
+-
+-
+-def log(*args: str, **kwargs: Any) -> None:
+-    print(*args, file=sys.stderr, **kwargs)
+-
+-
+-def fail(s: str, exit_code: int = 1):
+-    log(f"Error: {s}")
+-    sys.exit(exit_code)
+-
+-
+-MARKERS: List[str] = [".git", "ROOT", "WORKSPACE"]
+-SYSTEM_ROOT: str = os.path.abspath(os.sep)
+-DEFAULT_CONFIG_LOCATIONS: List[Dict[str, str]] = [{
+-    "root": "workspace",
+-    "path": "repos.json"
+-}, {
+-    "root": "workspace",
+-    "path": "etc/repos.json"
+-}, {
+-    "root": "home",
+-    "path": ".just-repos.json"
+-}, {
+-    "root": "system",
+-    "path": "etc/just-repos.json"
+-}]
+-
+-
+-def run_cmd(cmd: List[str],
+-            *,
+-            env: Optional[Any] = None,
+-            stdout: Optional[Any] = subprocess.DEVNULL,
+-            stdin: Optional[Any] = None,
+-            cwd: str):
+-    result = subprocess.run(cmd, cwd=cwd, env=env, stdout=stdout, stdin=stdin)
+-    if result.returncode != 0:
+-        fail("Command %s in %s failed" % (cmd, cwd))
+-    return result.stdout
+-
+-
+-def find_workspace_root(path: Optional[str] = None) -> Optional[str]:
+-    def is_workspace_root(path: str) -> bool:
+-        for m in MARKERS:
+-            if os.path.exists(os.path.join(path, m)):
+-                return True
+-        return False
+-
+-    if not path:
+-        path = os.getcwd()
+-    while True:
+-        if is_workspace_root(path):
+-            return path
+-        if path == SYSTEM_ROOT:
+-            return None
+-        path = os.path.dirname(path)
+-
+-
+-def read_location(location: Dict[str, str], root: Optional[str] = None) -> str:
+-    search_root = location.get("root", None)
+-    search_path = location.get("path", None)
+-
+-    fs_root = None
+-    if search_root == "workspace":
+-        if root:
+-            fs_root = root
+-        else:
+-            fs_root = find_workspace_root()
+-    if not root:
+-        if search_root == "home":
+-            fs_root = Path.home()
+-        if search_root == "system":
+-            fs_root = SYSTEM_ROOT
+-
+-    if fs_root:
+-        return os.path.realpath(
+-            os.path.join(cast(str, fs_root), cast(str, search_path)))
+-    return "/"  # certainly not a file
+-
+-
+-def get_repository_config_file(root: Optional[str] = None) -> Optional[str]:
+-    for location in DEFAULT_CONFIG_LOCATIONS:
+-        path = read_location(location, root=root)
+-        if path and os.path.isfile(path):
+-            return path
+-
+-
+-def get_base_config(repository_config: Optional[str]) -> Optional[Json]:
+-    if repository_config == "-":
+-        return json.load(sys.stdin)
+-    if not repository_config:
+-        repository_config = get_repository_config_file()
+-    if (repository_config):
+-        with open(repository_config) as f:
+-            return json.load(f)
+-    fail('Could not get base config')
+-
+-
+-def clone(url: str, branch: str, *,
+-          mirrors: List[str], inherit_env: List[str],
+-          ) -> Tuple[str, Dict[str, Any], str]:
+-    # clone the given git repository, checkout the specified
+-    # branch, and return the checkout location
+-    workdir: str = tempfile.mkdtemp()
+-    run_cmd(["git", "clone", "-b", branch, "--depth", "1", url, "src"],
+-            cwd=workdir)
+-    srcdir: str = os.path.join(workdir, "src")
+-    commit: str = run_cmd(["git", "log", "-n", "1", "--pretty=%H"],
+-                          cwd=srcdir,
+-                          stdout=subprocess.PIPE).decode('utf-8').strip()
+-    log("Importing commit %s" % (commit, ))
+-    repo: Dict[str, Any] = {
+-        "type": "git",
+-        "repository": url,
+-        "branch": branch,
+-        "commit": commit,
+-    }
+-    if mirrors:
+-        repo = dict(repo, **{"mirrors": mirrors})
+-    if inherit_env:
+-        repo = dict(repo, **{"inherit env": inherit_env})
+-    return srcdir, repo, workdir
+-
+-
+-def get_repo_to_import(config: Json) -> str:
+-    """From a given repository config, take the main repository."""
+-    if config.get("main") is not None:
+-        return cast(str, config.get("main"))
+-    repos = config.get("repositories", {}).keys()
+-    if repos:
+-        return sorted(repos)[0]
+-    fail("Config does not contain any repositories; unsure what to import")
+-
+-
+-def repos_to_import(repos_config: Json,
+-                    entry: str,
+-                    known: Optional[Iterable[str]] = None) -> List[str]:
+-    """Compute the set of transitively reachable repositories"""
+-    visited: Set[str] = set()
+-    to_import: List[str] = []
+-    if known:
+-        visited = set(known)
+-
+-    def visit(name: str) -> None:
+-        if name in visited:
+-            return
+-        to_import.append(name)
+-        visited.add(name)
+-        vals = cast(Dict[str, str],
+-                    repos_config.get(name, {}).get("bindings", {})).values()
+-        for n in vals:
+-            visit(n)
+-
+-    visit(entry)
+-    return to_import
+-
+-
+-def extra_layers_to_import(repos_config: Json, repos: List[str]) -> List[str]:
+-    """Compute the collection of repositories additionally needed as they serve
+-    as layers for the repositories to import."""
+-    extra_imports: Set[str] = set()
+-    for repo in repos:
+-        if isinstance(repos_config[repo]["repository"], str):
+-            extra_imports.add(repos_config[repo]["repository"])
+-        for layer in ["target_root", "rule_root", "expression_root"]:
+-            if layer in repos_config[repo]:
+-                extra: str = repos_config[repo][layer]
+-                if (extra not in repos) and (extra not in extra_imports):
+-                    extra_imports.add(extra)
+-    return list(extra_imports)
+-
+-
+-def name_imports(to_import: List[str],
+-                 existing: Set[str],
+-                 base_name: str,
+-                 main: Optional[str] = None) -> Dict[str, str]:
+-    """Assign names to the repositories to import in such a way that
+-    no conflicts arise."""
+-    assign: Dict[str, str] = {}
+-
+-    def find_name(name: str) -> str:
+-        base: str = "%s/%s" % (base_name, name)
+-        if (base not in existing) and (base not in assign):
+-            return base
+-        count: int = 0
+-        while True:
+-            count += 1
+-            candidate: str = base + " (%d)" % count
+-            if (candidate not in existing) and (candidate not in assign):
+-                return candidate
+-
+-    if main is not None and (base_name not in existing):
+-        assign[main] = base_name
+-        to_import = [x for x in to_import if x != main]
+-    for repo in to_import:
+-        assign[repo] = find_name(repo)
+-    return assign
+-
+-
+-def rewrite_repo(repo_spec: Json, *, remote: Dict[str, Any],
+-                 assign: Json) -> Json:
+-    new_spec: Json = {}
+-    repo = repo_spec.get("repository", {})
+-    if isinstance(repo, str):
+-        repo = assign[repo]
+-    elif repo.get("type") == "file":
+-        changes = {}
+-        subdir = repo.get("path", ".")
+-        if subdir not in ["", "."]:
+-            changes["subdir"] = subdir
+-        repo = dict(remote, **changes)
+-    elif repo.get("type") == "distdir":
+-        existing_repos: List[str] = repo.get("repositories", [])
+-        new_repos = [assign[k] for k in existing_repos]
+-        repo = dict(repo, **{"repositories": new_repos})
+-    new_spec["repository"] = repo
+-    for key in ["target_root", "rule_root", "expression_root"]:
+-        if key in repo_spec:
+-            new_spec[key] = assign[repo_spec[key]]
+-    for key in ["target_file_name", "rule_file_name", "expression_file_name"]:
+-        if key in repo_spec:
+-            new_spec[key] = repo_spec[key]
+-    bindings = repo_spec.get("bindings", {})
+-    new_bindings = {}
+-    for k, v in bindings.items():
+-        new_bindings[k] = assign[v]
+-    if new_bindings:
+-        new_spec["bindings"] = new_bindings
+-    return new_spec
+-
+-
+-def handle_import(args: Namespace) -> Json:
+-    base_config: Json = cast(Json, get_base_config(args.repository_config))
+-    base_repos: Json = base_config.get("repositories", {})
+-    srcdir, remote, to_cleanup = clone(
+-        args.URL, args.branch,
+-        mirrors = args.mirrors,
+-        inherit_env = args.inherit_env,
+-    )
+-    if args.foreign_repository_config:
+-        foreign_config_file = args.foreign_repository_config
+-    else:
+-        foreign_config_file = get_repository_config_file(srcdir)
+-    foreign_config: Json = {}
+-    if args.plain:
+-        foreign_config = {
+-            "main": "",
+-            "repositories": {
+-                "": {
+-                    "repository": {
+-                        "type": "file",
+-                        "path": "."
+-                    }
+-                }
+-            }
+-        }
+-    else:
+-        if (foreign_config_file):
+-            with open(foreign_config_file) as f:
+-                foreign_config = json.load(f)
+-        else:
+-            fail('Could not get repository config file')
+-    foreign_repos: Json = foreign_config.get("repositories", {})
+-    if args.foreign_repository_name:
+-        foreign_name = args.foreign_repository_name
+-    else:
+-        foreign_name = get_repo_to_import(foreign_config)
+-    import_map: Json = {}
+-    for theirs, ours in args.import_map:
+-        import_map[theirs] = ours
+-    main_repos = repos_to_import(foreign_repos, foreign_name, import_map.keys())
+-    extra_repos = sorted([x for x in main_repos if x != foreign_name])
+-    extra_imports = sorted(extra_layers_to_import(foreign_repos, main_repos))
+-    ordered_imports: List[str] = [foreign_name] + extra_repos + extra_imports
+-    import_name = foreign_name
+-    if args.import_as is not None:
+-        import_name = args.import_as
+-    assign: Dict[str, str] = name_imports(
+-        ordered_imports,
+-        set(base_repos.keys()),
+-        import_name,
+-        main=foreign_name,
+-    )
+-    log("Importing %r as %r" % (foreign_name, import_name))
+-    log("Transitive dependencies to import: %r" % (extra_repos, ))
+-    log("Repositories imported as layers: %r" % (extra_imports, ))
+-    total_assign = dict(assign, **import_map)
+-    for repo in ordered_imports:
+-        base_repos[assign[repo]] = rewrite_repo(
+-            foreign_repos[repo],
+-            remote=remote,
+-            assign=total_assign,
+-        )
+-    base_config["repositories"] = base_repos
+-    shutil.rmtree(to_cleanup)
+-    return base_config
+-
+-
+-def main():
+-    parser = ArgumentParser(
+-        prog="just-import-deps",
+-        description="Import a dependency transitively into a given" +
+-        " multi-repository configuration")
+-    parser.add_argument("-C",
+-                        dest="repository_config",
+-                        help="Repository-description file to import into",
+-                        metavar="FILE")
+-    parser.add_argument(
+-        "-b",
+-        dest="branch",
+-        help="The branch of the remote repository to import and follow",
+-        metavar="branch",
+-        default="master")
+-    parser.add_argument(
+-        "-R",
+-        dest="foreign_repository_config",
+-        help="Repository-description file in the repository to import",
+-        metavar="relative-path")
+-    parser.add_argument(
+-        "--plain",
+-        action="store_true",
+-        help="Pretend the remote repository description is the canonical" +
+-        " single-repository one",
+-    )
+-    parser.add_argument(
+-        "--as",
+-        dest="import_as",
+-        help="Name prefix to import the foreign repository as",
+-        metavar="NAME",
+-    )
+-    parser.add_argument(
+-        "--map",
+-        nargs=2,
+-        dest="import_map",
+-        help=
+-        "Map the specified foreign repository to the specified existing repository",
+-        action="append",
+-        default=[])
+-    parser.add_argument("--mirror",
+-                        dest="mirrors",
+-                        help="Alternative fetch locations for the repository",
+-                        action="append",
+-                        default=[],
+-                        metavar="URL")
+-    parser.add_argument(
+-        "--inherit-env",
+-        dest="inherit_env",
+-        help="Environment variables to inherit when calling git to fetch",
+-        action="append",
+-        default=[],
+-        metavar="VAR")
+-    parser.add_argument('URL')
+-    parser.add_argument('foreign_repository_name', nargs='?')
+-    args = parser.parse_args()
+-    new_config = handle_import(args)
+-    print(json.dumps(new_config))
+-
+-
+-if __name__ == "__main__":
+-    main()
+diff --git a/etc/repos.json b/etc/repos.json
+index fe706b2f..46b82226 100644
+--- a/etc/repos.json
++++ b/etc/repos.json
+@@ -1,6 +1,6 @@
+-{ "main": "just"
++{ "main": "must"
+ , "repositories":
+-  { "just":
++  { "must":
+     { "repository": {"type": "file", "path": "."}
+     , "bindings":
+       { "rules": "rules-just"
+diff --git a/share/man/just-deduplicate-repos.1.md b/share/man/just-deduplicate-repos.1.md
+deleted file mode 100644
+index 9a87597a..00000000
+--- a/share/man/just-deduplicate-repos.1.md
++++ /dev/null
+@@ -1,84 +0,0 @@
+-% JUST-DEDUPLICATE-REPOS(1) | General Commands Manual
+-
+-NAME
+-====
+-
+-just-deduplicate-repos - remove duplicate repositories from a
+-multi-repository configuration
+-
+-SYNOPSIS
+-========
+-
+-**`just-deduplicate-repos`**  \[*`repository name`*\]...  
+-
+-DESCRIPTION
+-===========
+-
+-Read a multi-repository configuration from stdin and print to stdout
+-a repository configuration with indistinguishable repositories merged
+-to a single repository. In doing so, keep the `"main"` repository,
+-as well as any repositories specified on the as arguments on
+-the command line, even if that means that some indistinguishable
+-repositories cannot be merged into one (as both have to be kept).
+-
+-RATIONALE
+-=========
+-
+-As **`just`**(1) is a multi-repository build system, typically
+-imported dependencies also contain multi-repository set up. Hence,
+-a project typically has three components to describe the involved
+-logical repositories.
+-
+-First, there is a description of the local repositories, i.e.,
+-the logical repositories (as `"file"` repositories) that reside
+-in this physical repository in the sense of the version-control
+-system (typically **`git`**(1)). They are described in a file often
+-called `etc/repos.template.json` in **`just-mr-repository-config`**(5)
+-format with open names for the direct dependencies.
+-
+-Next, there is a description of where to get the direct dependencies
+-and which branches to follow there. This description is typically
+-a script piping said `repos.template.json` through a sequence of
+-invocations of **`just-import-git`**(1) which also adds the indirect
+-dependencies.
+-
+-Finally, the output of that script is the multi-repository
+-configuration `etc/repos.json` for this project. This file, while
+-being generated, is still committed into the repository. First
+-of all, it contains additional information: the precise pinned
+-versions of (all) the dependencies which might change over time.
+-So committing this file allows others to build with the precise
+-same dependencies (including for old versions of the project).
+-Moreover, having the multi-repository configuration materialized
+-in the repository allows offline builds once the dependencies have
+-been fetched (possibly by a different project) to **`just-mr`**(1)'s
+-local build root (possibly by the setup for a different project
+-that happens to have those dependencies as well). To update the
+-dependencies, the import script can be run again and the newly
+-created `etc/repos.json` committed in an update commit (after
+-verifying that this update does not break anything). The final
+-reason to commit a generated `etc/repos.json` is to close the loop
+-and allow this project to be the dependency of another one; to keep
+-the work done by **`just-import-git`**(1) manageable it requires the
+-imported repository to have all its (direct or indirect) dependencies
+-described precisely in their multi-repository config.
+-
+-When a project has more than one direct dependency, it can happen
+-that two of the direct dependencies have a common dependency. Simply
+-chaining **`just-import-git`**(1) this dependency will end up twice
+-in the final repository configuration. While this will not result
+-in additional actions, it will increase the cost of the analysis.
+-Moreover, not merging indistinguishable repositories will make the
+-resulting `etc/repos.json` bigger and propagate those redundant
+-copies to other projects importing this one; that mechanism can,
+-over a long chain of imports, lead to exponential many of those
+-redundant copies. To avoid this, **`just-deduplicate-repos`** can
+-be added as a last step (before the JSON pretty printing) in the
+-import script.
+-
+-See also
+-========
+-
+-**`just-mr-repository-config`**(5),
+-**`just-import-git`**(1)
+-**`just-mr`**(1)
+diff --git a/share/man/just-import-git.1.md b/share/man/just-import-git.1.md
+deleted file mode 100644
+index b3eca023..00000000
+--- a/share/man/just-import-git.1.md
++++ /dev/null
+@@ -1,108 +0,0 @@
+-% JUST-IMPORT-GIT(1) | General Commands Manual
+-
+-NAME
+-====
+-
+-just-import-git - import one Git repository to a multi-repository
+-configuration
+-
+-SYNOPSIS
+-========
+-
+-**`just-import-git`** \[*`OPTION`*\]... *`URL`* \[*`foreign repository name`*\]  
+-
+-DESCRIPTION
+-===========
+-
+-Extend an existing **`just-mr-repository-config`**(5) by adding one Git
+-repository. In doing so, the dependencies declared in the imported
+-repository are added as well and *`"file"`* repositories are transformed
+-to *`"subdir"`* parts of the imported repository. This solves the
+-problem, that a repository can refer to itself only as *`"."`* in a
+-portable way. The importing party, however, always knows the URL it is
+-importing from.
+-
+-The imported repositories are renamed in a way that no conflicts with
+-already present repositories arise. The repositories pulled in as
+-dependencies are named in a way to remind for which repositories they
+-came as a dependency. This renaming is taken into account at all places
+-repositories are referred to, i.e., the *`"bindings"`* field, as well as
+-roots defined by reference to other repositories.
+-
+-Only the main parts of repositories are imported (*`"repository"`*,
+-*`"bindings"`*, names, and roots). The *`"pragma"`* part, as well as
+-unknown fields are dropped.
+-
+-The repository to import is specified by its URL
+-
+-The resulting configuration is printed on standard output.
+-
+-OPTIONS
+-=======
+-
+-**`--as`** *`NAME`*  
+-Specify the name the imported repository should have in the final
+-configuration. If not specified, default to the name the repository has
+-in the configuration file of the repository imported. In any case, the
+-name is amended if it conflicts with an already existing name.
+-
+-**`-b`** *`BRANCH`*  
+-The branch in the imported repository to use; this branch is also
+-recorded as the branch to follow. Defaults to *`"master"`*.
+-
+-**`-C`** *`CONFIGFILE`*  
+-Use the specified file as the configuration to import into. The string
+-*`-`* is treated as a request to take the config from stdin; so a file
+-called *`-`* has to be described as *`.`*/*`-`*, or similar. If not
+-specified, a config file is searched for in the same way as **`just-mr`**
+-does when invoked with **`--norc`**.
+-
+-**`-h`**, **`--help`**  
+-Output a usage message and exit.
+-
+-**`--map`** *`THEIRS`* *`OURS`*  
+-Map repositories from the imported configuration to already existing
+-ones. Those repositories are not imported (and the search for their
+-transitive dependency is omitted) and instead the specified already
+-existing repository is used. This is useful, if a sufficiently
+-compatible repository already exists in the configuration.
+-
+-**`-R`** *`RELPATH`*  
+-Use the file, specified by path relative to the repository root, as
+-multi-repository specification in the imported repository. If not
+-specified, for a config file is searched in the same way as **`just-mr`**
+-does, when invoked with **`--no-rc`**, however leaving out searches
+-relative to global roots (*`"home"`* and *`"system"`*). In other words,
+-*`repos.json`* and *`etc/repos.json`* are tried if this option is not
+-given.
+-
+-**`--plain`**  
+-Pretend the foreign multi-repository specification is the canonical one
+-for a single repository. Useful, if the repository to be imported does
+-not have a repository configuration or should be imported without
+-dependencies.
+-
+-**`--mirror`** *`URL`*  
+-Provides an alternative fetch location for the imported repository.
+-Specifying this option multiple times will accumulate URLs in the order
+-they appear on the command line. These URLs will not be used during the
+-import, but instead will be recorded as the value of the `"mirrors"` key
+-in the resulting configuration of the imported repository.
+-See **`just-mr-repository-config`**(5).
+-
+-**`--inherit-env`** *`VAR`*  
+-Specify, for the imported repository, environment variables to
+-be inherited when fetching the repository by calling `git`. These
+-variables will not be taken into account during the import (where
+-the whole environment is inherited), but instead will be recorded as
+-the value for the `"inherit env"` key in the resulting configuration
+-of the imported repository.
+-See **`just-mr-repository-config`**(5).
+-
+-See also
+-========
+-
+-**`git`**(1),
+-**`just-deduplicate-repos`**(1),
+-**`just-mr-repository-config`**(5),
+-**`just-mr`**(1)
+diff --git a/share/man/just-repository-config.5.md b/share/man/must-backend-config.5.md
+similarity index 91%
+rename from share/man/just-repository-config.5.md
+rename to share/man/must-backend-config.5.md
+index 96fbb84d..95093a4e 100644
+--- a/share/man/just-repository-config.5.md
++++ b/share/man/must-backend-config.5.md
+@@ -1,15 +1,15 @@
+-% JUST REPOSITORY CONFIG(5) | File Formats Manual
++% MUST BACKEND CONFIG(5) | File Formats Manual
+ 
+ NAME
+ ====
+ 
+-just repository config - The format of the repository config used by
+-**`just`**(1)
++must backend config - The format of the **`must-backend`**(5) config used for
++setting up repository file roots
+ 
+ DESCRIPTION
+ ===========
+ 
+-**`just`**'s repository configuration is read as JSON. Any other
++**`must`**'s repository configuration is read as JSON. Any other
+ serialization describing the same JSON object is equivalent. We assume,
+ that in JSON objects, each key occurs at most once; it is implementation
+ defined how repetitions of the same key are treated.
+@@ -43,7 +43,7 @@ contains *`file roots`*, file names, and bindings to other repositories.
+ Specifically the following fields are supported:
+ 
+  - *`"workspace_root"`* contains the *`file root`* where source files
+-   are located. If this entry is missing for the main repository, **`just`**
++   are located. If this entry is missing for the main repository, **`must`**
+    will perform the normal workspace root resolution starting from the
+    current working directory.
+ 
+@@ -97,12 +97,12 @@ NOTES
+ 
+ Although the repository configuration is human-readable and can be
+ written by hand, in many cases it will be generated by an independent
+-tool. **`just-mr`**(1) is one such tool that can be used for
++tool. **`must`**(1) is one such tool that can be used for
+ configuration generation, but not necessarily the only one.
+ 
+ See also
+ ========
+ 
+-**`just`**(1),
+-**`just-mr`**(1),
+-**`just-mr-repository-config`**(5)
++**`must`**(1),
++**`must-backend`**(5),
++**`must-repository-config`**(5)
+diff --git a/share/man/just.1.md b/share/man/must-backend.5.md
+similarity index 92%
+rename from share/man/just.1.md
+rename to share/man/must-backend.5.md
+index 156a6cb4..a4d74d56 100644
+--- a/share/man/just.1.md
++++ b/share/man/must-backend.5.md
+@@ -1,29 +1,28 @@
+-% JUST(1) | General Commands Manual
++% MUST BACKEND(5) | Conventions Manual
+ 
+ NAME
+ ====
+ 
+-just - a generic build tool
++must backend - Backend for **`must`**(1), handling build-related subcommands.
+ 
+ SYNOPSIS
+ ========
+ 
+-**`just`** **`version`**  
+-**`just`** {**`analyse`**|**`build`**} \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
+-**`just`** **`install`** \[*`OPTION`*\]... **`-o`** *`OUTPUT_DIR`* \[\[*`module`*\] *`target`*\]  
+-**`just`** **`install-cas`** \[*`OPTION`*\]... *`OBJECT_ID`*  
+-**`just`** **`add-to-cas`** \[*`OPTION`*\]... *`PATH`*  
+-**`just`** **`describe`** \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
+-**`just`** **`rebuild`** \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
+-**`just`** **`traverse`** \[*`OPTION`*\]... **`-o`** *`OUTPUT_DIR`* **`-g`** *`GRAPH_FILE`*  
+-**`just`** **`gc`** \[*`OPTION`*\]...  
+-**`just`** **`execute`** \[*`OPTION`*\]...  
+-**`just`** **`serve`** *`SERVE_CONFIG_FILE`*
++**`must`** {**`analyse`**|**`build`**} \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
++**`must`** **`install`** \[*`OPTION`*\]... **`-o`** *`OUTPUT_DIR`* \[\[*`module`*\] *`target`*\]  
++**`must`** **`install-cas`** \[*`OPTION`*\]... *`OBJECT_ID`*  
++**`must`** **`add-to-cas`** \[*`OPTION`*\]... *`PATH`*  
++**`must`** **`describe`** \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
++**`must`** **`rebuild`** \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
++**`must`** **`traverse`** \[*`OPTION`*\]... **`-o`** *`OUTPUT_DIR`* **`-g`** *`GRAPH_FILE`*  
++**`must`** **`gc`** \[*`OPTION`*\]...  
++**`must`** **`execute`** \[*`OPTION`*\]...  
++**`must`** **`serve`** *`SERVE_CONFIG_FILE`*  
+ 
+ DESCRIPTION
+ ===========
+ 
+-Just is a generic multi-repository build system; language-specific
++The must backend is a generic multi-repository build system; language-specific
+ knowledge is described in separate rule files. For every build action,
+ the relative location of the inputs is independent of their physical
+ location. This staging allows taking sources from different locations
+@@ -39,7 +38,7 @@ the empty string. Specifying the correct repository, target root,
+ module, and target name allows to process that target independently of
+ the current working directory.
+ 
+-If the module is not specified on the command line, **`just`** sets the
++If the module is not specified on the command line, **`must`** sets the
+ module corresponding to the current working directory.
+ 
+ If a target is not specified, the lexicographically-first target,
+@@ -47,7 +46,7 @@ according to native byte order, is used. So, a target named with an
+ empty string will always be the default target for that module.
+ 
+ If a target depends on other targets defined in other modules or
+-repositories, **`just`** will recursively visit all and only the required
++repositories, **`must`** will recursively visit all and only the required
+ modules.
+ 
+ The main repository is the repository containing the target specified on
+@@ -63,8 +62,8 @@ file is used as main.
+ The *`workspace_root`* of the main repository is then defined as
+ follows. If the option **`--workspace-root`** is provided, then
+ *`workspace_root`* is set accordingly. If the option is not provided,
+-**`just`** checks if it is specified within the multi-repository
+-configuration file. If it is, then it is set accordingly. If not, **`just`**
++**`must`** checks if it is specified within the multi-repository
++configuration file. If it is, then it is set accordingly. If not, **`must`**
+ starts looking for a marker in the current directory first, then in all
+ the parent directories until it finds one. The supported markers are
+ 
+@@ -73,7 +72,7 @@ the parent directories until it finds one. The supported markers are
+  - *`.git`* (can be either a file - empty or not, content is ignored -
+    or the famous directory)
+ 
+-If it fails, **`just`** errors out.
++If it fails, **`must`** errors out.
+ 
+ For non-main repositories, the *`workspace_root`* entry must be declared
+ in the multi-repository configuration file.
+@@ -104,24 +103,6 @@ the multi-repository configuration file.
+ SUBCOMMANDS
+ ===========
+ 
+-**`version`**
+--------------
+-
+-Print on stdout a JSON object providing version information about the
+-version of the tool used. This JSON object will contain at least the
+-following keys.
+-
+- - *`"version"`* The version, as a list of numbers of length at least 3,
+-   following the usual convention that version numbers are compared
+-   lexicographically.
+- - *`"suffix"`* The version suffix as a string. Generally, suffixes
+-   starting with a + symbol are positive offsets to the version, while
+-   suffixes starting with a *`~`* symbol are negative offsets.
+- - *`"SOURCE_DATE_EPOCH"`* Either a number or *`null`*. If it is a
+-   number, it is the time, in seconds since the epoch, of the last
+-   commit that went into this binary. It is *`null`* if that time is not
+-   known (e.g., in development builds).
+-
+ **`analyse`**|**`build`**|**`install`**
+ ---------------------------------------
+ 
+@@ -157,7 +138,7 @@ described in the *`TARGETS`* file. Since artifacts are only stored in
+ the CAS, the user has to use either the **`install`** or **`install-cas`**
+ subcommand to get them.
+ 
+-**`just`** allows for both local (i.e., on the same machine where **`just`** is
++**`must`** allows for both local (i.e., on the same machine where **`must`** is
+ used) and remote compilation (i.e., by sending requests over a TCP
+ connection, e.g., to a different machine, cluster or cloud
+ infrastructure). In case of a remote compilation, artifacts are compiled
+@@ -208,7 +189,7 @@ rules, to make usage simpler.
+  - If the size is missing (e.g., because the argument contains no
+    colon), or cannot be parsed as a number, this is not an error, and
+    the value 0 is assumed. While this is almost never the correct size,
+-   many CAS implementations, including the local CAS of just itself,
++   many CAS implementations, including the local CAS of must itself,
+    ignore the size for lookups.
+  - From the type, only the first letter (*`f`* for non-executable file,
+    *`x`* for executable file, and *`t`* for tree) is significant; the
+@@ -264,7 +245,7 @@ a foreign version-control system twice.
+ --------------
+ 
+ It allows for the building and staging of requested artifacts from a
+-well-defined *`GRAPH_FILE`*. See **`just-graph-file`**(5) for more
++well-defined *`GRAPH_FILE`*. See **`must-graph-file`**(5) for more
+ details.
+ 
+ **`gc`**
+@@ -281,7 +262,7 @@ corresponding disk space reclaimed.
+ -------------
+ 
+ This subcommand starts a single node remote execution service, honoring
+-the just native remote protocol.
++the must native remote protocol.
+ 
+ If the flag **`--compatible`** is provided, the execution service will
+ honor the original remote build execution protocol.
+@@ -292,7 +273,7 @@ honor the original remote build execution protocol.
+ This subcommand starts a service that provides target dependencies needed for a
+ remote execution build. It expects as its only and mandatory argument the path
+ to a configuration file, following the format described in
+-**`just-serve-config`**(5).
++**`must-serve-config`**(5).
+ 
+ OPTIONS
+ =======
+@@ -425,11 +406,11 @@ Supported by: build|install|rebuild|traverse.
+ 
+ **`--dump-graph`** *`PATH`*  
+ File path for writing the action graph description to. See
+-**`just-graph-file`**(5) for more details.  
++**`must-graph-file`**(5) for more details.  
+ Supported by: analyse|build|install|rebuild.
+ 
+ **`-f`**, **`--log-file`** *`PATH`*  
+-Path to local log file. **`just`** will store the information printed on
++Path to local log file. **`must`** will store the information printed on
+ stderr in the log file along with the thread id and timestamp when the
+ output has been generated.  
+ Supported by:
+@@ -783,7 +764,7 @@ out clean up tasks that do not affect what is stored in the cache.
+ EXIT STATUS
+ ===========
+ 
+-The exit status of **`just`** is one of the following values:
++The exit status of **`must`** is one of the following values:
+ 
+  - 0: the command completed successfully
+  - 1: the command could not complete due to some errors (e.g.,
+@@ -795,6 +776,6 @@ The exit status of **`just`** is one of the following values:
+ See also
+ ========
+ 
+-**`just-repository-config`**(5),
+-**`just-serve-config`**(5),
+-**`just-mr`**(1)
++**`must-backend-config`**(5),
++**`must-serve-config`**(5),
++**`must`**(1)
+diff --git a/share/man/just-graph-file.5.md b/share/man/must-graph-file.5.md
+similarity index 97%
+rename from share/man/just-graph-file.5.md
+rename to share/man/must-graph-file.5.md
+index 06f41558..2e8d8307 100644
+--- a/share/man/just-graph-file.5.md
++++ b/share/man/must-graph-file.5.md
+@@ -1,9 +1,9 @@
+-% JUST GRAPH FILE(5) | File Formats Manual
++% MUST GRAPH FILE(5) | File Formats Manual
+ 
+ NAME
+ ====
+ 
+-just graph file - The format of the action graph used by **`just`**(1)
++must graph file - The format of the action graph used by **`must`**(1)
+ 
+ DESCRIPTION
+ ===========
+@@ -124,7 +124,7 @@ ignore those. Implementations writing action-graph files should be aware
+ that a future version of this file format might give a specific meaning
+ to those extra keys.
+ 
+-Graphs written by **`just`**(1) have the additional key *`"origins"`* in
++Graphs written by **`must`**(1) have the additional key *`"origins"`* in
+ each action. The value is a list of all places where this action was
+ requested (so often, but not always, the list has length 1). Each such
+ place is described by a JSON object with the following keys.
+@@ -143,4 +143,4 @@ place is described by a JSON object with the following keys.
+ See also
+ ========
+ 
+-**`just`**(1)
++**`must`**(1)
+diff --git a/share/man/just-mr-repository-config.5.md b/share/man/must-repository-config.5.md
+similarity index 93%
+rename from share/man/just-mr-repository-config.5.md
+rename to share/man/must-repository-config.5.md
+index 90ae5055..5778b0eb 100644
+--- a/share/man/just-mr-repository-config.5.md
++++ b/share/man/must-repository-config.5.md
+@@ -1,17 +1,17 @@
+-% JUST-MR REPOSITORY CONFIG(5) | File Formats Manual
++% MUST REPOSITORY CONFIG(5) | File Formats Manual
+ 
+ NAME
+ ====
+ 
+-just-mr repository config - The format of the repository config used by
+-**`just-mr`**(1)
++must repository config - The format of the repository config used by
++**`must`**(1)
+ 
+ DESCRIPTION
+ ===========
+ 
+-In order for the **`just-mr`**(1) tool to generate a repository
+-configuration file usable by the **`just`**(1) multi-repository build
+-system, it requires a configuration file describing repositories and
++In order for the **`must`**(1) tool to generate a repository
++configuration file usable by the **`must-backend`**(5),
++it requires a configuration file describing repositories and
+ their dependencies.
+ 
+ The file is read as JSON. Any other serialization describing the same
+@@ -125,7 +125,7 @@ The following fields are supported:
+ 
+ It defines as workspace root as a fixed `git` tree, given by the
+ corresponding tree identifier. If that tree is not known already to
+-`just-mr`, a specified command will be executed in a fresh directory
++`must`, a specified command will be executed in a fresh directory
+ that is expected to produce the given tree somewhere below the
+ working directory.
+ 
+@@ -157,13 +157,13 @@ The following fields are supported:
+    command.
+ 
+  - *`"inherit env"`* provides a list of variables to be inherited from the
+-   environment `just-mr` is called within, if set there.
++   environment `must` is called within, if set there.
+ 
+ ### *`"distdir"`*
+ 
+ It defines as workspace root a directory with the distribution archives
+ of the specified repositories. Usually this root is realized as a Git
+-tree in the Git repository in **`just`**'s local build root.
++tree in the Git repository in **`must`**'s local build root.
+ 
+ The following fields are supported:
+ 
+@@ -182,7 +182,7 @@ supported. If its value is *`true`* then it indicates that the workspace
+ root should be returned as a Git tree. If the root directory is already
+ part of a Git repository, its Git tree identifier is used; otherwise,
+ the workspace root will be realized as a Git tree in the Git repository
+-in **`just`**'s local build root.
++in **`must`**'s local build root.
+ 
+ For all workspace roots except *`"distdir"`* the pragma key *`"special"`* is
+ supported. If its value is *`"ignore"`* then it indicates that the workspace
+@@ -250,13 +250,13 @@ Additional keys
+ ---------------
+ 
+ Any JSON object described in this format might have additional keys
+-besides the ones mentioned. The current strategy of **`just-mr`**(1) is
++besides the ones mentioned. The current strategy of **`must`**(1) is
+ to accept and ignore them. Users should be aware that future versions of
+ this format might give specific meanings to these extra keys.
+ 
+ See also
+ ========
+ 
+-**`just`**(1),
+-**`just-mr`**(1),
+-**`just-repository-config`**(5)
++**`must`**(1),
++**`must-backend`**(5),
++**`must-backend-config`**(5)
+diff --git a/share/man/just-serve-config.5.md b/share/man/must-serve-config.5.md
+similarity index 93%
+rename from share/man/just-serve-config.5.md
+rename to share/man/must-serve-config.5.md
+index 4f127ea4..a2561b82 100644
+--- a/share/man/just-serve-config.5.md
++++ b/share/man/must-serve-config.5.md
+@@ -1,10 +1,10 @@
+-% JUST SERVE CONFIG(5) | File Formats Manual
++% MUST SERVE CONFIG(5) | File Formats Manual
+ 
+ NAME
+ ====
+ 
+-**`just`** **`serve`** configuration - The format of the configuration used by
+-the **`serve`** subcommand of **`just`**(1)
++**`must`** **`serve`** configuration - The format of the configuration used by
++the **`serve`** subcommand of **`must`**(1)
+ 
+ DESCRIPTION
+ ===========
+@@ -14,7 +14,7 @@ JSON object is equivalent. We assume, that in JSON objects, each key
+ occurs at most once; it is implementation defined how repetitions of the
+ same key are treated.
+ 
+-The just-serve configuration format
++The must-serve configuration format
+ -----------------------------------
+ 
+ The configuration file is given by a JSON object.
+@@ -24,7 +24,7 @@ The configuration file is given by a JSON object.
+    be created if it does not exist already. 
+ 
+  - The value for the key *`"repositories"`* is a list of strings specifying
+-   paths to Git repositories for **`just`** **`serve`** to use as additional
++   paths to Git repositories for **`must`** **`serve`** to use as additional
+    object lookup locations. The paths are to be used in the order given and
+    only if requested objects are not found in the local build root.  
+ 
+@@ -42,7 +42,7 @@ The configuration file is given by a JSON object.
+    file instead of overwriting existing.
+ 
+   - The value for the key *`"authentication"`* is a JSON object specifying
+-   client-side authentication options for **`just`** **`serve`** when
++   client-side authentication options for **`must`** **`serve`** when
+    communicating with the remote execution endpoint.  
+    For subkey *`"ca cert"`* the value is a string specifying the path to a TLS
+    CA certificate.  
+@@ -52,7 +52,7 @@ The configuration file is given by a JSON object.
+    TLS client key.  
+ 
+  - The value for the key *`"remote service"`* is a JSON object specifying the
+-   server arguments for running **`just`** **`serve`** as a service.  
++   server arguments for running **`must`** **`serve`** as a service.  
+    For subkey *`"interface"`* the value specifies the interface of the service.
+    If unset, the loopback device is used.  
+    For subkey *`"port"`* the value specifies the port to which the service is to
+@@ -68,7 +68,7 @@ The configuration file is given by a JSON object.
+    TLS server key.  
+ 
+  - The value for the key *`"execution endpoint"`* is a JSON object specifying
+-   the arguments of a remote execution endpoint to be used by **`just`**
++   the arguments of a remote execution endpoint to be used by **`must`**
+    **`serve`**.  
+    For subkey *`"address"`* the value is a string specifying the remote
+    execution address in a NAME:PORT format.  
+@@ -91,7 +91,7 @@ The configuration file is given by a JSON object.
+    unset, the number of available cores is used.  
+ 
+  - The value for the key *`"build"`* is a JSON object specifying arguments used
+-   by **`just`** **`serve`** to orchestrate remote builds.  
++   by **`must`** **`serve`** to orchestrate remote builds.  
+    For subkey *`"build jobs"`* the value specifies the number of jobs to run
+    during a remote build. If unset, the same value as for outer key *`"jobs"`*
+    is used.  
+@@ -150,4 +150,4 @@ An example serve configuration file could look as follows.
+ See also
+ ========
+ 
+-**`just`**(1)
++**`must`**(1)
+diff --git a/share/man/just-mr.1.md b/share/man/must.1.md
+similarity index 66%
+rename from share/man/just-mr.1.md
+rename to share/man/must.1.md
+index c69227cf..e349c0da 100644
+--- a/share/man/just-mr.1.md
++++ b/share/man/must.1.md
+@@ -1,31 +1,30 @@
+-% JUST-MR(1) | General Commands Manual
++% MUST(1) | General Commands Manual
+ 
+ NAME
+ ====
+ 
+-just-mr - multi-repository configuration tool and launcher for the build tool
++must - a generic build tool
+ 
+ SYNOPSIS
+ ========
+ 
+-**`just-mr`** \[*`OPTION`*\]... **`mrversion`**  
+-**`just-mr`** \[*`OPTION`*\]... {**`setup`**|**`setup-env`**} \[**`--all`**\] \[*`main-repo`*\]  
+-**`just-mr`** \[*`OPTION`*\]... **`fetch`** \[**`--all`**\] \[**`--backup-to-remote`**] \[**`-o`** *`fetch-dir`*\] \[*`main-repo`*\]  
+-**`just-mr`** \[*`OPTION`*\]... **`update`** \[*`repo`*\]...  
+-**`just-mr`** \[*`OPTION`*\]... **`do`** \[*`JUST_ARG`*\]...  
+-**`just-mr`** \[*`OPTION`*\]... {**`version`**|**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`add-to-cas`**|**`rebuild`**|**`gc`**} \[*`JUST_ARG`*\]...  
++**`must`** \[*`OPTION`*\]... **`version`**  
++**`must`** \[*`OPTION`*\]... {**`setup`**|**`setup-env`**} \[**`--all`**\] \[*`main-repo`*\]  
++**`must`** \[*`OPTION`*\]... **`fetch`** \[**`--all`**\] \[**`--backup-to-remote`**] \[**`-o`** *`fetch-dir`*\] \[*`main-repo`*\]  
++**`must`** \[*`OPTION`*\]... **`update`** \[*`repo`*\]...  
++**`must`** \[*`OPTION`*\]... {**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`add-to-cas`**|**`rebuild`**|**`gc`**|**`traverse`**} \[*`SUBCMD_ARG`*\]...  
+ 
+ DESCRIPTION
+ ===========
+ 
+-Just-MR is a configuration tool for the multi-repository Just build
++Must is a configuration tool for the multi-repository Must build
+ system. It can be used both standalone and as a launcher for
+-**`just`**(1).
++**`must-backend`**(5).
+ 
+ The tool performs specific operations, based on the invoked subcommand,
+ on repositories described in a configuration file. All subcommands
+ operate at the level of *workspace roots* deduced from the given
+-repository descriptions. See **`just-mr-repository-config`**(5) for more
++repository descriptions. See **`must-repository-config`**(5) for more
+ details on the input format.
+ 
+ OPTIONS
+@@ -39,18 +38,18 @@ Output a usage message and exit.
+ 
+ **`-C`**, **`--repository-config`** *`PATH`*  
+ Path to the multi-repository configuration file. See
+-**`just-mr-repository-config`**(5) for more details. If no configuration
+-file is specified, **`just-mr`** will look for one in the following
++**`must-repository-config`**(5) for more details. If no configuration
++file is specified, **`must`** will look for one in the following
+ order:
+ 
+- - *`$WORKSPACE_ROOT/repos.json`* (workspace of the **`just-mr`** invocation)
+- - *`$WORKSPACE_ROOT/etc/repos.json`* (workspace of the **`just-mr`**
++ - *`$WORKSPACE_ROOT/repos.json`* (workspace of the **`must`** invocation)
++ - *`$WORKSPACE_ROOT/etc/repos.json`* (workspace of the **`must`**
+    invocation)
+- - *`$HOME/.just-repos.json`*
+- - *`/etc/just-repos.json`*
++ - *`$HOME/.must-repos.json`*
++ - *`/etc/must-repos.json`*
+ 
+-The default configuration lookup order can be adjusted in the just-mrrc
+-file. See **`just-mrrc`**(5) for more details.
++The default configuration lookup order can be adjusted in the mustrc
++file. See **`mustrc`**(5) for more details.
+ 
+ **`--absent`** *`PATH`*  
+ Path to a file specifying which repositories are to be considered
+@@ -60,7 +59,7 @@ of those repository names to be considered absent.
+ 
+ **`-D`**, **`--defines`** *`JSON`*  
+ Defines, via an in-line JSON object, an overlay configuration for
+-**`just`**(1); if used as a launcher for a subcommand known to support
++**`must`**(1); if used as a launcher for a subcommand known to support
+ **`--defines`**, this defines value is forwarded, otherwise it is
+ ignored. If **`-D`** is given several times, the **`-D`** options
+ overlay (in the sense of *`map_union`*) in the order they are given on
+@@ -69,8 +68,9 @@ the command line.
+ **`--local-build-root`** *`PATH`*  
+ Root for local CAS, cache, and build directories. The path will be
+ created if it does not exist already. This option overwrites any values
+-set in the **`just-mrrc`**(5) file.  
+-Default: path *`".cache/just"`* in user's home directory.
++set in the **`mustrc`**(5) file.
++Default: path *`".cache/must"`* in user's home directory, or *`".cache/just"`*
++if not found.
+ 
+ **`--checkout-locations`** *`PATH`*  
+ Specification file for checkout locations and additional mirrors.
+@@ -90,8 +90,8 @@ This file contains a JSON object with several known keys:
+    with hostnames in the given list are preferred (in the order given)
+    over URLs with other hostnames.
+ 
+-This options overwrites any values set in the **`just-mrrc`**(5) file.  
+-Default: file path *`".just-local.json"`* in user's home directory.
++This options overwrites any values set in the **`mustrc`**(5) file.  
++Default: file path *`".must-local.json"`* in user's home directory.
+ 
+ **`-L`**, **`--local-launcher`** *`JSON_ARRAY`*  
+ JSON array with the list of strings representing the launcher to prepend
+@@ -104,14 +104,14 @@ the first place distfiles are looked for. This option can be given
+ multiple times to specify a list of distribution directories that are
+ used for lookup in the order they appear on the command line.
+ Directories specified via this option will be appended to the ones set
+-in the **`just-mrrc`**(5) file.  
++in the **`mustrc`**(5) file.  
+ Default: the single file path *`".distfiles"`* in user's home directory.
+ 
+ **`--main`** *`NAME`*  
+ The repository to take the target from.
+ 
+ **`-f`**, **`--log-file`** *`PATH`*  
+-Path to local log file. **`just-mr`** will store the information printed on
++Path to local log file. **`must`** will store the information printed on
+ stderr in the log file along with the thread id and timestamp when the
+ output has been generated.
+ 
+@@ -142,7 +142,7 @@ Address of a remote execution service. This is used as an intermediary fetch
+ location for archives, between local CAS (or distdirs) and the network.
+ 
+ **`-R`**, **`--remote-serve-address`** *`NAME`*:*`PORT`*  
+-Address of a **`just`** **`serve`** service. This is used as intermediary fetch
++Address of a **`must`** **`serve`** service. This is used as intermediary fetch
+ location for Git commits, between local CAS and the network.
+ 
+ **`--fetch-absent`**  
+@@ -151,17 +151,14 @@ This option cannot be set together with **`--compatible`**.
+ 
+ **`--compatible`**  
+ At increased computational effort, be compatible with the original remote build
+-execution protocol. If a remote execution service address is provided, this 
++execution protocol. If a remote execution service address is provided, this
+ option can be used to match the artifacts expected by the remote endpoint.
+ 
+-**`--just`** *`PATH`*  
+-Name of the just binary in *`PATH`* or path to the just binary.  
+-Default: *`"just"`*.
+-
+ **`--rc`** *`PATH`*  
+-Path to the just-mrrc file to use. See **`just-mrrc`**(5) for more
++Path to the mustrc file to use. See **`mustrc`**(5) for more
+ details.  
+-Default: file path *`".just-mrrc"`* in the user's home directory.
++Default: file path *`".mustrc"`* in the user's home directory, or
++*`".just-mrrc"`* if not found.
+ 
+ **`--dump-rc`** *`PATH`*  
+ Dump the effective rc, i.e., the rc after overlaying all applicable auxiliary
+@@ -175,13 +172,13 @@ the rare instances when shelling out to git is needed.
+ Default: *`"git"`*.
+ 
+ **`--norc`**  
+-Option to prevent reading any **`just-mrrc`**(5) file.
++Option to prevent reading any **`mustrc`**(5) file.
+ 
+ Authentication options
+ ----------------------
+ 
+ Only TLS and mutual TLS (mTLS) are supported.
+-They mirror the **`just`**(1) options.
++They mirror the **`must-backend`**(5) options.
+ 
+ **`--tls-ca-cert`** *`PATH`*  
+ Path to a TLS CA certificate that is trusted to sign the server
+@@ -198,21 +195,32 @@ conjunction with **`--tls-client-cert`** and **`--tls-ca-cert`**.
+ SUBCOMMANDS
+ ===========
+ 
+-**`mrversion`**
+----------------
++**`version`**
++-------------
++
++Print on stdout a JSON object providing version information about the
++version of the tool used. This JSON object will contain at least the
++following keys.
++
++ - *`"version"`* The version, as a list of numbers of length at least 3,
++   following the usual convention that version numbers are compared
++   lexicographically.
++ - *`"suffix"`* The version suffix as a string. Generally, suffixes
++   starting with a + symbol are positive offsets to the version, while
++   suffixes starting with a *`~`* symbol are negative offsets.
++ - *`"SOURCE_DATE_EPOCH"`* Either a number or *`null`*. If it is a
++   number, it is the time, in seconds since the epoch, of the last
++   commit that went into this binary. It is *`null`* if that time is not
++   known (e.g., in development builds).
+ 
+-Print on stdout a JSON object providing version information for this
+-tool itself; the **`version`** subcommand calls the **`version`** subcommand of
+-just. The version information for just-mr is in the same format that
+-also **`just`** uses.
+ 
+ **`setup`**|**`setup-env`**
+ ---------------------------
+ 
+ These subcommands fetch all required repositories and generate an
+-appropriate multi-repository **`just`** configuration file. The resulting
++appropriate multi-repository **`must`** configuration file. The resulting
+ file is stored in CAS and its path is printed to stdout. See
+-**`just-repository-config`**(5) for more details on the resulting
++**`must-backend-config`**(5) for more details on the resulting
+ configuration file format.
+ 
+ If a main repository is provided in the input configuration or on
+@@ -225,7 +233,7 @@ from the input configuration file, use the **`--all`** flag.
+ The behavior of the two subcommands differs only with respect to the
+ main repository. In the case of **`setup-env`**, the workspace root of the
+ main repository is left out, such that it can be deduced from the
+-working directory when **`just`** is invoked. In this way, working on a
++working directory when **`must`** is invoked. In this way, working on a
+ checkout of that repository is possible, while having all of its
+ dependencies properly set up. In the case of **`setup`**, the workspace root
+ of the main repository is taken as-is into the output configuration
+@@ -238,7 +246,7 @@ This subcommand prepares all archive-type and **`"git tree"`** workspace roots
+ for an offline build by fetching all their required source files from the
+ specified locations given in the input configuration file or ensuring the 
+ specified tree is present in the Git cache, respectively. Any subsequent
+-**`just-mr`** or **`just`** invocations containing fetched archive or 
++**`must`** invocations containing fetched archive or 
+ **`"git tree"`** workspace roots will thus need no further network connections.
+ 
+ If a main repository is provided in the input configuration or on
+@@ -265,7 +273,7 @@ update
+ This subcommand updates the specified repositories (possibly none) and
+ prints the resulting updated configuration file to stdout.
+ 
+-Currently, **`just-mr`** can only update Git repositories and it will fail
++Currently, **`must`** can only update Git repositories and it will fail
+ if a different repository type is given. The tool also fails if any of
+ the given repository names are not found in the configuration file.
+ 
+@@ -275,54 +283,32 @@ remote repository in the specified branch. The output configuration file
+ will otherwise remain the same at the JSON level with the input
+ configuration file.
+ 
+-do
+---
++**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`rebuild`**|**`gc`**
++-------------------------------------------------------------------------------------------------------------
+ 
+-This subcommand is used as the canonical way of specifying just
+-arguments and calling **`just`** via **`execvp`**(2). Any subsequent argument
+-is unconditionally forwarded to **`just`**. For *known* subcommands
+-(**`version`**, **`describe`**, **`analyse`**, **`build`**, **`install`**, 
+-**`install-cas`**, **`add-to-cas`**, **`rebuild`**, **`gc`**), the
+-**`just-mr setup`** step is performed first for those commands accepting a
++For these build-related subcommands, the
++**`must setup`** step is performed first for those commands accepting a
+ configuration and the produced configuration is prefixed to the provided
+ arguments. The main repository for the **`setup`** step can be provided in
+ the configuration or on the command line. If no main repository is
+ provided, the lexicographical first repository from the configuration is
+ used.
+ 
+-All logging arguments given to **`just-mr`** are passed to **`just`** as early
+-arguments. If log files are provided, an unconditional
+-**`--log-append`** argument is passed as well, which ensures no log
+-messages will get overwritten.
+-
+-The **`--local-launcher`** argument is passed to **`just`** as early
+-argument for those *known* subcommands that accept it (build, install,
+-rebuild).
+-
+-The **`--remote-execution-address`**, **`--compatible`**, and 
+-**`--remote-serve-address`** arguments are passed to **`just`** as early
+-arguments for those *known* subcommands that accept them
+-(analyse, build, install-cas, add-to-cas, install, rebuild, traverse).
+-
+-The *authentication options* given to **`just-mr`** are passed to **`just`** as
+-early arguments for those *known* subcommands that accept them, according to
+-**`just`**(1).
+-
+-**`version`**|**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`add-to-cas`**|**`rebuild`**|**`gc`**
+-------------------------------------------------------------------------------------------------------------------------------
++Any given **`must`** option (see **OPTIONS** section above) that is also
++supported by the specified subcommand (e.g., **`--local-build-root`** for
++**`build`**) will be forwarded and serves as a default to this subcommand.
+ 
+-This subcommand is the explicit way of specifying *known* just
+-subcommands and calling **`just`** via **`execvp`**(2). The same description
+-as for the **`do`** subcommand applies.
++For the full documentation of these build-related subcommands please see
++**`must-backend`**(5).
+ 
+ EXIT STATUS
+ ===========
+ 
+-The exit status of **`just-mr`** is one of the following values:
++The exit status of **`must`** is one of the following values:
+ 
+  - 0: the command completed successfully
+- - 64: setup succeeded, but exec failed
+- - 65: any unspecified error occurred in just-mr
++ - 64: setup succeeded, but build failed
++ - 65: any unspecified error occurred in must
+  - 66: unknown subcommand
+  - 67: error parsing the command-line arguments
+  - 68: error parsing the configuration
+@@ -331,12 +317,11 @@ The exit status of **`just-mr`** is one of the following values:
+  - 71: error during setup
+ 
+ Any other exit code that does not have bit 64 set is a status value from
+-**`just`**, if **`just-mr`** is used as a launcher. See **`just`**(1) for more
+-details.
++the must backend. See **`must-backend`**(5) for more details.
+ 
+ See also
+ ========
+ 
+-**`just-mr-repository-config`**(5),
+-**`just-repository-config`**(5),
+-**`just`**(1)
++**`must-repository-config`**(5),
++**`must-backend-config`**(5),
++**`must-backend`**(5)
+diff --git a/share/man/just-mrrc.5.md b/share/man/mustrc.5.md
+similarity index 71%
+rename from share/man/just-mrrc.5.md
+rename to share/man/mustrc.5.md
+index c9e4a073..0ba9e1df 100644
+--- a/share/man/just-mrrc.5.md
++++ b/share/man/mustrc.5.md
+@@ -1,10 +1,10 @@
+-% JUST-MRRC(5) | File Formats Manual
++% MUSTRC(5) | File Formats Manual
+ 
+ NAME
+ ====
+ 
+-just-mr configuration - The format of the configuration used by
+-**`just-mr`**(1)
++must configuration - The format of the configuration used by
++**`must`**(1)
+ 
+ DESCRIPTION
+ ===========
+@@ -24,8 +24,8 @@ The value for key *`"root"`* is either *`"workspace"`*, *`"home"`*, or
+ *`"system"`*, which have the following meanings:
+ 
+  - *`"workspace"`* refers to the root of the workspace in which the
+-   `just-mr` invocation was issued (not the workspace of the requested
+-   main repository). This location root is ignored if **`just-mr`** was not
++   `must` invocation was issued (not the workspace of the requested
++   main repository). This location root is ignored if **`must`** was not
+    invoked from inside a workspace.
+ 
+  - *`"home"`* refers to the user's home directory.
+@@ -40,14 +40,14 @@ root. This path is only relevant for locations of config files. If such
+ a config file contains relative paths, those will be resolved relative
+ to the specified base. If omitted, the default value *`"."`* is used.
+ 
+-The just-mrrc format
++The mustrc format
+ --------------------
+ 
+-The just-mrrc is given by a JSON object.
++The mustrc is given by a JSON object.
+ 
+  - The value for the key *`"config lookup order"`* is a JSON list of
+    location objects, specifying where to look for multi-repository
+-   configurations (see **`just-mr-repository-config`**(5) for more
++   configurations (see **`must-repository-config`**(5) for more
+    detail). The lookup is performed in the same order the location
+    objects appear in the list.
+ 
+@@ -57,28 +57,24 @@ The just-mrrc is given by a JSON object.
+ 
+  - The value for the key *`"local build root"`* is a single location
+    object, specifying the path to use as the local build root. For more
+-   details, see **`just-mr`**(1).
++   details, see **`must`**(1).
+ 
+  - The value for the key *`"checkout locations"`* is a single location
+    object, specifying the path to the file describing checkout locations
+-   and additional mirror locations. For more details, see **`just-mr`**(1).
++   and additional mirror locations. For more details, see **`must`**(1).
+ 
+  - The value for the key *`"distdirs"`* is a JSON list of location
+    objects, specifying where to look for distribution files (usually
+    collected via the subcommand **`fetch`**). The lookup is performed in
+    the same order the location objects appear in the list. For more
+-   details, see **`just-mr`**(1).
+-
+- - The value for the key *`"just"`* is a single location object,
+-   specifying the path to the **`just`** binary to use for execution, if
+-   **`just-mr`** is used as a launcher.
++   details, see **`must`**(1).
+ 
+  - The value for the key *`"git"`* is a single location object,
+    specifying the path to the git binary to use in the instances when
+-   **`just-mr`** needs to shell out.
++   **`must`** needs to shell out.
+ 
+  - The value for the key *`"local launcher"`*, if given, is list of
+-   strings setting the default for local launcher for **`just-mr`**;
++   strings setting the default for local launcher for **`must`**;
+    command-line arguments take precedence over the value in the
+    configuration file. If the key *`"local launcher"`* is absent, the
+    default *`["env", "--"]`* is assumed.
+@@ -96,7 +92,7 @@ The just-mrrc is given by a JSON object.
+    on the command line.
+ 
+  - The value for the key *`"remote execution"`* is a JSON object specifying the
+-   remote execution options for **`just-mr`**.  
++   remote execution options for **`must`**.  
+    For subkey *`"address"`* the value is a string specifying the remote
+    execution address in a NAME:PORT format.  
+    For subkey *`"compatible"`* the value is a flag which specifies whether the
+@@ -105,14 +101,14 @@ The just-mrrc is given by a JSON object.
+    argument.
+ 
+  - The value for the key *`"remote serve"`* is a JSON object specifying the
+-   remote serve options for **`just-mr`**.  
++   remote serve options for **`must`**.  
+    For subkey *`"address"`* the value is a string specifying the remote
+    serve address in a NAME:PORT format.  
+    Each subkey value can be overwritten by its corresponding command-line
+    argument.
+ 
+  - The value for the key *`"authentication"`* is a JSON object specifying
+-   client-side authentication options for **`just-mr`**.  
++   client-side authentication options for **`must`**.  
+    For subkey *`"ca cert"`* the value is a single location object
+    specifying the path to a TLS CA certificate.
+    For subkey *`"client cert"`* the value is a single location object specifying
+@@ -124,38 +120,38 @@ The just-mrrc is given by a JSON object.
+ 
+  - The value for the key *`"remote-execution properties"`*, if
+    provided, has to be a list of strings. Each entry is forwarded
+-   as `--remote-execution-property` to the invocation of the build
+-   tool, if **`just-mr`** is used as a launcher.
+-
+- - The value for the key *`"just files"`* is a JSON object. The keys correspond
+-   to options that some **`just`** subcommands accept and require a file as
+-   argument. For each key, the value is a list of location objects. When
+-   **`just-mr`** is used as a launcher and the invoked subcommand is known to
+-   support this option, this option is set in the **`just`** invocation with
+-   the first matching entry, if any. The supported options are *`"config"`*
++   as `--remote-execution-property` to the invocation of the build tool.
++
++ - The value for the key *`"must files"`* is a JSON object. The keys correspond
++   to options that some **`must`** subcommands accept and require a file as
++   argument. For each key, the value is a list of location objects.
++   The supported options are *`"config"`*
+    and *`endpoint-configuration`*.
+ 
+- - The value for the key *`"just args"`* is a JSON object. Its keys are
+-   **`just`** subcommands and its value is a JSON list of strings. For the
+-   corresponding subcommand, these strings are prefixed to the **`just`**
+-   argument vector (after all other options provided through the rc file),
+-   if **`just-mr`** is used as a launcher.
++ - The key *`"just files"`* is an alias for *`"must files"`*, to ensure
++   backwards compatibility with *Justbuild*.
++
++ - The value for the key *`"cmd args"`* is a JSON object. Its keys are
++   **`must`** backend subcommands (see **`must-backend`**(5)) and its
++   value is a JSON list of strings.
++
++ - The key *`"just args"`* is an alias for *`"cmd args"`*, to ensure
++   backwards compatibility with *Justbuild*.
+ 
+  - The value for the key *`"rc files"`*, if given, is a list of
+    location objects. For those location objects that refer to
+    an existing file, this file is read as an additional rc file
+    overlaying the given rc file in the specified order; the value
+    of `"rc files"` in the overlaying files is ignored.  
+-   In this way, an rc file commited to a repository can be allowed
++   In this way, an rc file committed to a repository can be allowed
+    to set a sensible configuration, remote-execution and serve end
+    points, etc. This is particularly useful when simultaneously
+    working on several projects with different settings.
+ 
+-
+ EXAMPLE
+ =======
+ 
+-An example just-mrrc file could look like the following:
++An example mustrc file could look like the following:
+ 
+ ``` jsonc
+ { "rc files":
+@@ -165,33 +161,32 @@ An example just-mrrc file could look like the following:
+ , "config lookup order":
+   [ {"root": "workspace", "path": "repos.json"}
+   , {"root": "workspace", "path": "etc/repos.json"}
+-  , {"root": "home", "path": ".just-repos.json"}
+-  , {"root": "system", "path": "etc/just-repos.json"}
++  , {"root": "home", "path": ".must-repos.json"}
++  , {"root": "system", "path": "etc/must-repos.json"}
+   ]
+ , "absent":
+   [ {"root": "workspace", "path": "etc/absent.json"}
+-  , {"root": "home", "path": ".just-absent"}
++  , {"root": "home", "path": ".must-absent"}
+   ]
+-, "local build root": {"root": "home", "path": ".cache/just"}
+-, "checkout locations": {"root": "home", "path": ".just-local.json"}
++, "local build root": {"root": "home", "path": ".cache/must"}
++, "checkout locations": {"root": "home", "path": ".must-local.json"}
+ , "local launcher": ["env", "--"]
+-, "log limit": 5
++, "log limit": 4
+ , "restrict stderr log limit": 4
+-, "log files": [{"root": "home", "path": ".log/just/latest-invocation"}]
++, "log files": [{"root": "home", "path": ".log/must/latest-invocation"}]
+ , "distdirs": [{"root": "home", "path": ".distfiles"}]
+-, "just": {"root": "system", "path": "usr/bin/just"}
+ , "git": {"root": "system", "path": "usr/bin/git"}
+ , "remote execution": {"address": "10.0.0.1:8980"}
+ , "remote-execution properties": ["image:development-v1.2.3"]
+-, "just args":
++, "cmd args":
+   { "build": ["-J", "64"]
+   , "install": ["-J", "64", "--remember"]
+   , "install-cas": ["--remember"]
+   }
+-, "just files":
++, "must files":
+   { "config":
+     [ {"root": "workspace", "path": "etc/config.json"}
+-    , {"root": "home", "path": ".just-config"}
++    , {"root": "home", "path": ".must-config"}
+     ]
+   }
+ }
+@@ -200,5 +195,5 @@ An example just-mrrc file could look like the following:
+ See also
+ ========
+ 
+-**`just-mr`**(1),
+-**`just-mr-repository-config`**(5)
++**`must`**(1),
++**`must-repository-config`**(5)
+diff --git a/share/just_complete.bash b/share/must_complete.bash
+similarity index 79%
+rename from share/just_complete.bash
+rename to share/must_complete.bash
+index 7a7c00c0..afd995c6 100644
+--- a/share/just_complete.bash
++++ b/share/must_complete.bash
+@@ -12,17 +12,17 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
+-########################### just completion
++########################### must backend completion
+ 
+-_just_subcommand_options(){
++_must_backend_subcommand_options(){
+     local cmd=$1
+-    for w in $(just $cmd --help)
++    for w in $(must $cmd --help)
+     do
+         [[ $w =~ ^-. ]] &&  printf "%s\n" ${w//,/" "}
+     done
+ }
+ 
+-_just_targets(){
++_must_backend_targets(){
+     command -v python3 &>/dev/null || return
+     python3 - <<EOF
+ from json import load
+@@ -77,7 +77,7 @@ main('$1', '$2', '$3')
+ EOF
+ }
+ 
+-_just_completion(){
++_must_backend_completion(){
+     local readonly SUBCOMMANDS=(build analyse describe install-cas install rebuild gc execute -h --help version)
+     local word=${COMP_WORDS[$COMP_CWORD]}
+     local prev=${COMP_WORDS[$((COMP_CWORD-1))]}
+@@ -91,12 +91,12 @@ _just_completion(){
+         COMPREPLY=($(compgen -W "${SUBCOMMANDS[*]}" -- $word))
+     elif [[ $cmd =~ ^(install-cas|execute|gc) ]]
+     then
+-        local _opts=($(_just_subcommand_options $cmd))
++        local _opts=($(_must_backend_subcommand_options $cmd))
+         COMPREPLY=($(compgen -f -W "${_opts[*]}" -- $word ))
+         compopt -o plusdirs -o bashdefault -o default
+     elif [[ $cmd =~ ^(build|analyse|describe|install|rebuild) ]]
+     then
+-        local _opts=($(_just_subcommand_options $cmd))
++        local _opts=($(_must_backend_subcommand_options $cmd))
+         # look for -C and --main
+         for i in "${!COMP_WORDS[@]}"
+         do
+@@ -109,11 +109,11 @@ _just_completion(){
+                 conf="${COMP_WORDS[$((++i))]}"
+             fi
+         done
+-        # if $conf is empty and this function is invoked by just-mr
++        # if $conf is empty and this function is invoked by must
+         # we use the auto-generated conf file
+-        if [ -z "$conf" ]; then conf="${justmrconf}"; 
++        if [ -z "$conf" ]; then conf="${mustconf}"; 
+         fi
+-        local _targets=($(_just_targets "$conf" "$main" "$prev" 2>/dev/null))
++        local _targets=($(_must_backend_targets "$conf" "$main" "$prev" 2>/dev/null))
+         COMPREPLY=($(compgen -f -W "${_opts[*]} ${_targets[*]}" -- $word ))
+         compopt -o plusdirs -o bashdefault -o default
+     else
+@@ -121,10 +121,8 @@ _just_completion(){
+     fi
+ }
+ 
+-complete -F _just_completion just
+-
+-########################### just-mr completion
+-_just-mr_options(){
++########################### must completion
++_must_options(){
+     local cmd=$1
+     for w in $($cmd --help 2>/dev/null)
+     do
+@@ -132,9 +130,9 @@ _just-mr_options(){
+     done
+ }
+ 
+-_just-mr_parse_subcommand() {
++_must_parse_subcommand() {
+     local readonly FLAGS=("--help\n-h\n--norc\ndo") # treat 'do' as flag
+-    local readonly OPTIONS=("--distdir\n--just\n--local-build-root\n--main\n--rc\n-C\n-L")
++    local readonly OPTIONS=("--distdir\n--local-build-root\n--main\n--rc\n-C\n-L")
+     shift
+     while [ -n "$1" ]; do
+         if echo -e "$FLAGS" | grep -q -- "^$1$"; then shift; continue; fi
+@@ -145,9 +143,9 @@ _just-mr_parse_subcommand() {
+     echo "$1"
+ }
+ 
+-_just-mr_repos(){
++_must_repos(){
+     command -v python3 &>/dev/null || return
+-    local CONF=$(just-mr setup --all 2>/dev/null)
++    local CONF=$(must setup --all 2>/dev/null)
+     if [ ! -f "$CONF" ]; then return; fi
+     python3 - <<EOF
+ from json import load
+@@ -161,11 +159,11 @@ if path.exists("$CONF"):
+ EOF
+ }
+ 
+-_just-mr_completion(){
++_must_completion(){
+     local readonly SUBCOMMANDS=(setup setup-env fetch update "do" version build analyse describe install-cas install rebuild gc execute)
+     local word=${COMP_WORDS[$COMP_CWORD]}
+     local prev=${COMP_WORDS[$((COMP_CWORD-1))]}
+-    local cmd=$(_just-mr_parse_subcommand "${COMP_WORDS[@]}")
++    local cmd=$(_must_parse_subcommand "${COMP_WORDS[@]}")
+     # first check if the current word matches a subcommand
+     # if we check directly with cmd, we fail to autocomplete setup to setup-env and install to install-cas
+     if [[ $word =~ ^(setup|setup-env|install-cas|install) ]]
+@@ -173,28 +171,28 @@ _just-mr_completion(){
+         COMPREPLY=($(compgen -W "${SUBCOMMANDS[*]}" -- $word))
+     elif [ "$prev" = "--main" ]
+     then
+-        local _repos=($(_just-mr_repos $prev))
++        local _repos=($(_must_repos $prev))
+         COMPREPLY=($(compgen -W "${_repos[*]}}" -- $word))
+-    elif [ "$prev" = "--distdir" ] || [ "$prev" = "--just" ] || [ "$prev" = "--local-build-root" ] || [ "$prev" = "--rc" ] || [ "$prev" = "-C" ] || [ "$prev" = "-L" ]
++    elif [ "$prev" = "--distdir" ] || [ "$prev" = "--local-build-root" ] || [ "$prev" = "--rc" ] || [ "$prev" = "-C" ] || [ "$prev" = "-L" ]
+     then
+         compopt -o bashdefault -o default
+     elif [[ "$cmd" =~ ^(setup|setup-env|fetch|update) ]]
+     then
+-        # just-mr subcommand options and repository names
+-        local _opts=($(_just-mr_options "just-mr $cmd"))
+-        local _repos=($(_just-mr_repos $prev))
++        # must subcommand options and repository names
++        local _opts=($(_must_options "must $cmd"))
++        local _repos=($(_must_repos $prev))
+         COMPREPLY=($(compgen -f -W "${_opts[*]} ${_repos[*]}" -- $word ))
+     elif [[ "$cmd" =~ ^(version|build|analyse|describe|install-cas|install|rebuild|gc|execute) ]]
+     then
+-        # just subcommand options and modules/targets eventually using the
++        # must backend subcommand options and modules/targets eventually using the
+         # auto-generated configuration
+-        local justmrconf=$(just-mr setup --all 2>/dev/null)
+-        _just_completion
++        local mustconf=$(must setup --all 2>/dev/null)
++        _must_backend_completion
+     else
+-        # just-mr top-level options
+-        local _opts=($(_just-mr_options "just-mr"))
++        # must top-level options
++        local _opts=($(_must_options "must"))
+         COMPREPLY=($(compgen -W "${_opts[*]} ${SUBCOMMANDS[*]}" -- $word))
+     fi
+ }
+ 
+-complete -F _just-mr_completion just-mr
++complete -F _must_completion must
+diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
+index 046a6a4c..31ef2a5e 100644
+--- a/src/buildtool/execution_engine/executor/executor.hpp
++++ b/src/buildtool/execution_engine/executor/executor.hpp
+@@ -435,6 +435,9 @@ class ExecutorImpl {
+         -> std::optional<Artifact::ObjectInfo> {
+         auto const* ws_root = repo_config->WorkspaceRoot(repo);
+         if (ws_root == nullptr) {
++            Logger::Log(LogLevel::Error,
++                        "Cannot determine workspace root for repo {}",
++                        repo);
+             return std::nullopt;
+         }
+         auto const object_type = ws_root->BlobType(file_path);
+diff --git a/src/buildtool/main/TARGETS b/src/buildtool/main/TARGETS
+index 602e31b8..0db9e017 100644
+--- a/src/buildtool/main/TARGETS
++++ b/src/buildtool/main/TARGETS
+@@ -1,9 +1,6 @@
+-{ "just":
+-  { "type": ["@", "rules", "CC", "binary"]
+-  , "arguments_config": ["FINAL_LDFLAGS"]
+-  , "name": ["just"]
+-  , "srcs": ["main.cpp"]
+-  , "private-deps":
++{ "just deps":
++  { "type": ["@", "rules", "CC", "library"]
++  , "deps":
+     [ ["@", "fmt", "", "fmt"]
+     , ["@", "gsl", "", "gsl"]
+     , ["@", "json", "", "json"]
+@@ -46,13 +43,14 @@
+     , "build_utils"
+     ]
+   , "stage": ["src", "buildtool", "main"]
+-  , "private-ldflags":
+-    { "type": "++"
+-    , "$1":
+-      [ ["-Wl,-z,stack-size=8388608"]
+-      , {"type": "var", "name": "FINAL_LDFLAGS", "default": []}
+-      ]
+-    }
++  }
++, "backend":
++  { "type": ["@", "rules", "CC", "library"]
++  , "name": ["backend"]
++  , "srcs": ["main.cpp"]
++  , "private-defines": ["BACKENDLIB"]
++  , "deps": ["just deps"]
++  , "stage": ["src", "buildtool", "main"]
+   }
+ , "describe":
+   { "type": ["@", "rules", "CC", "library"]
+diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
+index 39f0a17e..1bade4dd 100644
+--- a/src/buildtool/main/cli.cpp
++++ b/src/buildtool/main/cli.cpp
+@@ -169,11 +169,7 @@ auto SetupServeServiceCommandArguments(
+ 
+ }  // namespace
+ 
+-auto ParseCommandLineArguments(int argc, char const* const* argv)
+-    -> CommandLineArguments {
+-    CLI::App app("just, a generic build tool");
+-    app.option_defaults()->take_last();
+-
++void CreateJustSubcommands(CLI::App& app) {
+     auto* cmd_version = app.add_subcommand(
+         "version", "Print version information in JSON format.");
+     auto* cmd_describe = app.add_subcommand(
+@@ -201,6 +197,41 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+                              "Build and stage artifacts from graph file.");
+     app.require_subcommand(1);
+ 
++    (void)cmd_version;
++    (void)cmd_describe;
++    (void)cmd_analyse;
++    (void)cmd_build;
++    (void)cmd_install;
++    (void)cmd_rebuild;
++    (void)cmd_add_to_cas;
++    (void)cmd_install_cas;
++    (void)cmd_traverse;
++    (void)cmd_gc;
++    (void)cmd_execution;
++    (void)cmd_serve;
++    (void)cmd_preprocess;
++}
++
++auto ParseCommandLineArguments(int argc, char const* const* argv)
++    -> CommandLineArguments {
++    CLI::App app("just, a generic build tool");
++    app.option_defaults()->take_last();
++
++    CreateJustSubcommands(app);
++    auto cmd_version = app.get_subcommand("version");
++    auto cmd_describe = app.get_subcommand("describe");
++    auto cmd_analyse = app.get_subcommand("analyse");
++    auto cmd_build = app.get_subcommand("build");
++    auto cmd_install = app.get_subcommand("install");
++    auto cmd_rebuild = app.get_subcommand("rebuild");
++    auto cmd_add_to_cas = app.get_subcommand("add-to-cas");
++    auto cmd_install_cas = app.get_subcommand("install-cas");
++    auto cmd_traverse = app.get_subcommand("traverse");
++    auto cmd_gc = app.get_subcommand("gc");
++    auto cmd_execution = app.get_subcommand("execute");
++    auto cmd_serve = app.get_subcommand("serve");
++    auto cmd_preprocess = app.get_subcommand("preprocess");
++
+     CommandLineArguments clargs;
+     SetupDescribeCommandArguments(cmd_describe, &clargs);
+     SetupAnalyseCommandArguments(cmd_analyse, &clargs);
+diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
+index e03e9bec..5b287fa1 100644
+--- a/src/buildtool/main/cli.hpp
++++ b/src/buildtool/main/cli.hpp
+@@ -17,6 +17,10 @@
+ 
+ #include "src/buildtool/common/cli.hpp"
+ 
++void CreateJustSubcommands(CLI::App& app);
++
++#ifndef NO_BACKEND_CLI_DECL
++
+ enum class SubCommand {
+     kUnknown,
+     kVersion,
+@@ -61,3 +65,4 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+     -> CommandLineArguments;
+ 
+ #endif
++#endif
+diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
+index 21f08618..a4ea8688 100644
+--- a/src/buildtool/main/main.cpp
++++ b/src/buildtool/main/main.cpp
+@@ -573,8 +573,10 @@ void SetupRetryConfig(RetryArguments const& args) {
+     cwd = std::filesystem::relative(cwd, root);
+     auto root_dir = FindRoot(cwd, FileRoot{root}, kRootMarkers);
+     if (not root_dir) {
+-        Logger::Log(LogLevel::Error, "Could not determine workspace root.");
+-        std::exit(kExitFailure);
++        Logger::Log(
++            LogLevel::Debug,
++            "Could not determine workspace root, using current directory.");
++        return std::filesystem::current_path();
+     }
+     return root / *root_dir;
+ }
+@@ -824,7 +826,11 @@ void DumpArtifactsToBuild(
+ 
+ }  // namespace
+ 
++#ifdef BACKENDLIB
++auto backend_main(int argc, char* argv[]) -> int {
++#else
+ auto main(int argc, char* argv[]) -> int {
++#endif
+     SetupDefaultLogging();
+     try {
+         auto arguments = ParseCommandLineArguments(argc, argv);
+diff --git a/src/buildtool/storage/config.hpp b/src/buildtool/storage/config.hpp
+index f0a13e96..605df6b6 100644
+--- a/src/buildtool/storage/config.hpp
++++ b/src/buildtool/storage/config.hpp
+@@ -45,10 +45,15 @@
+ class StorageConfig {
+     struct ConfigData {
+         // Build root directory. All the storage dirs are subdirs of build_root.
+-        // By default, build_root is set to $HOME/.cache/just.
++        // By default, build_root is set to $HOME/.cache/must or
++        // $HOME/.cache/just (whichever exists).
+         // If the user uses --local-build-root PATH,
+         // then build_root will be set to PATH.
+-        std::filesystem::path build_root{kDefaultBuildRoot};
++        std::filesystem::path build_root{
++            (not std::filesystem::is_directory(kDefaultBuildRoot) and
++             std::filesystem::is_directory(kFallbackBuildRoot))
++                ? kFallbackBuildRoot
++                : kDefaultBuildRoot};
+ 
+         // Number of total storage generations (default: two generations).
+         std::size_t num_generations{2};
+@@ -76,6 +81,8 @@ class StorageConfig {
+     }
+ 
+     static inline auto const kDefaultBuildRoot =
++        GetUserHome() / ".cache" / "must";
++    static inline auto const kFallbackBuildRoot =
+         GetUserHome() / ".cache" / "just";
+ 
+     [[nodiscard]] static auto SetBuildRoot(
+diff --git a/src/other_tools/just_mr/TARGETS b/src/other_tools/just_mr/TARGETS
+index e71f144c..0ca032b3 100644
+--- a/src/other_tools/just_mr/TARGETS
++++ b/src/other_tools/just_mr/TARGETS
+@@ -1,13 +1,15 @@
+-{ "just-mr":
++{ "must":
+   { "type": ["@", "rules", "CC", "binary"]
+   , "arguments_config": ["FINAL_LDFLAGS"]
+-  , "name": ["just-mr"]
++  , "name": ["must"]
+   , "srcs": ["main.cpp"]
++  , "private-defines": ["NO_BACKEND_CLI_DECL"]
+   , "private-deps":
+     [ ["src/buildtool/build_engine/expression", "expression"]
+     , ["src/buildtool/logging", "logging"]
+     , ["src/buildtool/logging", "log_level"]
+     , ["src/buildtool/main", "version"]
++    , ["src/buildtool/main", "cli"]
+     , "cli"
+     , "exit_codes"
+     , ["@", "cli11", "", "cli11"]
+@@ -185,6 +187,7 @@
+   , "stage": ["src", "other_tools", "just_mr"]
+   , "private-deps":
+     [ ["@", "json", "", "json"]
++    , ["src/buildtool/main", "backend"]
+     , ["src/buildtool/build_engine/expression", "expression"]
+     , ["src/buildtool/logging", "logging"]
+     , ["src/buildtool/multithreading", "task_system"]
+diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
+index d76eee69..a40cf9b3 100644
+--- a/src/other_tools/just_mr/cli.hpp
++++ b/src/other_tools/just_mr/cli.hpp
+@@ -45,7 +45,6 @@ struct MultiRepoCommonArguments {
+     MirrorsPtr alternative_mirrors = std::make_shared<Mirrors>();
+     std::optional<std::vector<std::string>> local_launcher{std::nullopt};
+     CAInfoPtr ca_info = std::make_shared<CAInfo>();
+-    std::optional<std::filesystem::path> just_path{std::nullopt};
+     std::optional<std::string> main{std::nullopt};
+     std::optional<std::filesystem::path> rc_path{std::nullopt};
+     std::optional<std::filesystem::path> git_path{std::nullopt};
+@@ -100,6 +99,8 @@ struct ForwardOnlyArguments {
+     std::vector<std::string> remote_execution_properties{};
+ };
+ 
++namespace MR { // to avoid clash with backend (just) types
++
+ enum class SubCommand {
+     kUnknown,
+     kMRVersion,
+@@ -123,6 +124,8 @@ struct CommandLineArguments {
+     ForwardOnlyArguments launch_fwd;
+ };
+ 
++}  // namespace MR
++
+ static inline void SetupMultiRepoCommonArguments(
+     gsl::not_null<CLI::App*> const& app,
+     gsl::not_null<MultiRepoCommonArguments*> const& clargs) {
+@@ -196,11 +199,6 @@ static inline void SetupMultiRepoCommonArguments(
+            "CA certificate bundle to use for SSL verification when fetching "
+            "archives from remote.")
+         ->type_name("CA_BUNDLE");
+-    app->add_option("--just",
+-                    clargs->just_path,
+-                    fmt::format("The build tool to be launched (default: {}).",
+-                                kDefaultJustPath))
+-        ->type_name("PATH");
+     app->add_option("--main",
+                     clargs->main,
+                     "Main repository to consider from the configuration.")
+@@ -211,7 +209,7 @@ static inline void SetupMultiRepoCommonArguments(
+                clargs->rc_path = std::filesystem::weakly_canonical(
+                    std::filesystem::absolute(rc_path_raw));
+            },
+-           "Use just-mrrc file from custom path.")
++           "Use mustrc file from custom path.")
+         ->type_name("RCFILE");
+     app->add_option("--git",
+                     clargs->git_path,
+@@ -221,7 +219,7 @@ static inline void SetupMultiRepoCommonArguments(
+     app->add_option(
+            "--dump-rc", clargs->dump_rc, "Dump the effective rc value.")
+         ->type_name("PATH");
+-    app->add_flag("--norc", clargs->norc, "Do not use any just-mrrc file.");
++    app->add_flag("--norc", clargs->norc, "Do not use any mustrc file.");
+     app->add_option("-j, --jobs",
+                     clargs->jobs,
+                     "Number of jobs to run (Default: Number of cores).")
+@@ -229,8 +227,8 @@ static inline void SetupMultiRepoCommonArguments(
+     app->add_option_function<std::string>(
+            "-D,--defines",
+            [clargs](auto const& d) { clargs->defines.emplace_back(d); },
+-           "Define overlay configuration to be forwarded to the invocation of"
+-           " just, in case the subcommand supports it; otherwise ignored.")
++           "Define overlay configuration in case the subcommand supports it; "
++           "otherwise ignored.")
+         ->type_name("JSON")
+         ->trigger_on_parse();  // run callback on all instances while parsing,
+                                // not after all parsing is done
+diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
+index 1236d9f4..7a9a44de 100644
+--- a/src/other_tools/just_mr/launch.cpp
++++ b/src/other_tools/just_mr/launch.cpp
+@@ -29,6 +29,9 @@
+ #include "src/other_tools/just_mr/setup_utils.hpp"
+ #include "src/utils/cpp/file_locking.hpp"
+ 
++// forward declaration
++auto backend_main(int argc, char* argv[]) -> int;  // NOLINT
++
+ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+               MultiRepoCommonArguments const& common_args,
+               MultiRepoSetupArguments const& setup_args,
+@@ -64,25 +67,25 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+             if (not lock) {
+                 return kExitGenericFailure;
+             }
+-            auto config = JustMR::Utils::ReadConfiguration(
+-                config_file, common_args.absent_repository_file);
++            if (auto config = JustMR::Utils::ReadConfiguration(
++                    config_file, common_args.absent_repository_file)) {
+ 
+-            use_config = true;
+-            mr_config_path = MultiRepoSetup(config,
+-                                            common_args,
+-                                            setup_args,
+-                                            just_cmd_args,
+-                                            auth_args,
+-                                            /*interactive=*/false,
+-                                            std::move(multi_repo_tool_name));
+-            if (not mr_config_path) {
+-                Logger::Log(LogLevel::Error,
+-                            "Failed to setup config for calling \"{} {}\"",
+-                            common_args.just_path
+-                                ? common_args.just_path->string()
+-                                : kDefaultJustPath,
+-                            *subcommand);
+-                return kExitSetupError;
++                use_config = true;
++                mr_config_path =
++                    MultiRepoSetup(config,
++                                   common_args,
++                                   setup_args,
++                                   just_cmd_args,
++                                   auth_args,
++                                   /*interactive=*/false,
++                                   std::move(multi_repo_tool_name));
++                if (not mr_config_path) {
++                    Logger::Log(
++                        LogLevel::Error,
++                        "Failed to setup config for calling \"must {}\"",
++                        *subcommand);
++                    return kExitSetupError;
++                }
+             }
+         }
+         use_build_root = kKnownJustSubcommands.at(*subcommand).build_root;
+@@ -95,11 +98,12 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+         supports_dispatch = kKnownJustSubcommands.at(*subcommand).dispatch;
+     }
+     // build just command
+-    std::vector<std::string> cmd = {common_args.just_path->string()};
++    std::vector<std::string> cmd{};
++    cmd.emplace_back("must");
+     if (subcommand) {
+         cmd.emplace_back(*subcommand);
+     }
+-    if (use_config) {
++    if (use_config and mr_config_path) {
+         cmd.emplace_back("-C");
+         cmd.emplace_back(mr_config_path->string());
+     }
+@@ -216,7 +220,7 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+     }
+ 
+     Logger::Log(
+-        LogLevel::Info, "Setup finished, exec {}", nlohmann::json(cmd).dump());
++        LogLevel::Info, "Setup finished, call {}", nlohmann::json(cmd).dump());
+ 
+     // create argv
+     std::vector<char*> argv{};
+@@ -224,11 +228,6 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+                    std::end(cmd),
+                    std::back_inserter(argv),
+                    [](auto& str) { return str.data(); });
+-    argv.push_back(nullptr);
+-    // run execvp; will only return if failure
+-    [[maybe_unused]] auto res =
+-        execvp(argv[0], static_cast<char* const*>(argv.data()));
+-    // execvp returns only if command errored out
+-    Logger::Log(LogLevel::Error, "execvp failed with error code {}", errno);
+-    return kExitExecError;
++
++    return backend_main(argv.size(), argv.data());
+ }
+diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
+index 442d74f6..d2fe1285 100644
+--- a/src/other_tools/just_mr/main.cpp
++++ b/src/other_tools/just_mr/main.cpp
+@@ -33,6 +33,7 @@
+ #include "src/buildtool/logging/log_sink_cmdline.hpp"
+ #include "src/buildtool/logging/log_sink_file.hpp"
+ #include "src/buildtool/logging/logger.hpp"
++#include "src/buildtool/main/cli.hpp"
+ #include "src/buildtool/main/version.hpp"
+ #include "src/buildtool/storage/garbage_collector.hpp"
+ #include "src/other_tools/just_mr/cli.hpp"
+@@ -44,6 +45,8 @@
+ #include "src/other_tools/just_mr/setup_utils.hpp"
+ #include "src/other_tools/just_mr/update.hpp"
+ 
++using namespace MR;  // NOLINT
++
+ namespace {
+ 
+ /// \brief Setup arguments for just-mr itself, common to all subcommands.
+@@ -80,12 +83,10 @@ void SetupSetupCommandArguments(
+ 
+ [[nodiscard]] auto ParseCommandLineArguments(int argc, char const* const* argv)
+     -> CommandLineArguments {
+-    CLI::App app(
+-        "just-mr, a multi-repository configuration tool and launcher for the "
+-        "build tool");
++    CLI::App app("must, a generic multi-repository build tool.");
+     app.option_defaults()->take_last();
+     auto* cmd_mrversion = app.add_subcommand(
+-        "mrversion", "Print version information in JSON format of this tool.");
++        "version", "Print version information in JSON format of this tool.");
+     auto* cmd_setup = app.add_subcommand(
+         "setup", "Setup and generate configuration for the build tool");
+     auto* cmd_setup_env = app.add_subcommand(
+@@ -94,21 +95,26 @@ void SetupSetupCommandArguments(
+         app.add_subcommand("fetch", "Fetch and store distribution files.");
+     auto* cmd_update = app.add_subcommand(
+         "update",
+-        "Advance Git commit IDs and print updated just-mr configuration.");
+-    auto* cmd_do = app.add_subcommand(
+-        "do", "Canonical way of specifying subcommands to be launched.");
+-    cmd_do->set_help_flag();  // disable help flag
++        "Advance Git commit IDs and print updated must configuration.");
+     // define just subcommands
++    CLI::App app_just_subcommands("must build subcommands.");
++    CreateJustSubcommands(app_just_subcommands);
+     std::vector<CLI::App*> cmd_just_subcmds{};
+     cmd_just_subcmds.reserve(kKnownJustSubcommands.size());
+     for (auto const& known_subcmd : kKnownJustSubcommands) {
+-        auto* subcmd =
+-            app.add_subcommand(known_subcmd.first,
+-                               "Run setup and launch the \"" +
+-                                   known_subcmd.first + "\" subcommand.");
++        auto* subcmd = app.add_subcommand(
++            known_subcmd.first,
++            app_just_subcommands.get_subcommand(known_subcmd.first)
++                ->get_description());
+         subcmd->set_help_flag();  // disable help flag
+         cmd_just_subcmds.emplace_back(subcmd);
+     }
++    auto* cmd_do =
++        app.group("")  // group for creating hidden options
++            ->add_subcommand(
++                "do",
++                "Canonical way of specifying subcommands to be launched.");
++    cmd_do->set_help_flag();  // disable help flag
+     app.require_subcommand(1);
+ 
+     CommandLineArguments clargs;
+@@ -227,9 +233,6 @@ auto main(int argc, char* argv[]) -> int {
+ 
+         // if optional args were not read from just-mrrc or given by user, use
+         // the defaults
+-        if (not arguments.common.just_path) {
+-            arguments.common.just_path = kDefaultJustPath;
+-        }
+         if (not arguments.common.git_path) {
+             arguments.common.git_path = kDefaultGitPath;
+         }
+@@ -237,8 +240,11 @@ auto main(int argc, char* argv[]) -> int {
+         if (not arguments.common.just_mr_paths->root) {
+             forward_build_root = false;
+             arguments.common.just_mr_paths->root =
+-                std::filesystem::weakly_canonical(
+-                    std::filesystem::absolute(kDefaultBuildRoot));
++                std::filesystem::weakly_canonical(std::filesystem::absolute(
++                    (not std::filesystem::is_directory(kDefaultBuildRoot) and
++                     std::filesystem::is_directory(kFallbackBuildRoot))
++                        ? kFallbackBuildRoot
++                        : kDefaultBuildRoot));
+         }
+         if (not arguments.common.checkout_locations_file and
+             FileSystemManager::IsFile(std::filesystem::weakly_canonical(
+@@ -247,6 +253,13 @@ auto main(int argc, char* argv[]) -> int {
+                 std::filesystem::weakly_canonical(
+                     std::filesystem::absolute(kDefaultCheckoutLocationsFile));
+         }
++        if (not arguments.common.checkout_locations_file and
++            FileSystemManager::IsFile(std::filesystem::weakly_canonical(
++                std::filesystem::absolute(kFallbackCheckoutLocationsFile)))) {
++            arguments.common.checkout_locations_file =
++                std::filesystem::weakly_canonical(
++                    std::filesystem::absolute(kFallbackCheckoutLocationsFile));
++        }
+         if (arguments.common.just_mr_paths->distdirs.empty()) {
+             arguments.common.just_mr_paths->distdirs.emplace_back(
+                 kDefaultDistdirs);
+@@ -348,6 +361,10 @@ auto main(int argc, char* argv[]) -> int {
+         // The remaining options all need the config file
+         auto config = JustMR::Utils::ReadConfiguration(
+             config_file, arguments.common.absent_repository_file);
++        if (not config) {
++            Logger::Log(LogLevel::Error,
++                        "Cannot find repository configuration.");
++        }
+ 
+         // Run subcommand `setup` or `setup-env`
+         if (arguments.cmd == SubCommand::kSetup or
+diff --git a/src/other_tools/just_mr/rc.cpp b/src/other_tools/just_mr/rc.cpp
+index c5de5ad5..e60797a9 100644
+--- a/src/other_tools/just_mr/rc.cpp
++++ b/src/other_tools/just_mr/rc.cpp
+@@ -26,6 +26,8 @@
+ #include "src/other_tools/just_mr/exit_codes.hpp"
+ #include "src/other_tools/just_mr/rc_merge.hpp"
+ 
++using namespace MR;  // NOLINT
++
+ namespace {
+ 
+ [[nodiscard]] auto ReadLocation(
+@@ -48,7 +50,7 @@ namespace {
+         std::filesystem::path root_path{};
+         if (root_str == "workspace") {
+             if (not ws_root) {
+-                Logger::Log(LogLevel::Warning,
++                Logger::Log(LogLevel::Debug,
+                             "Not in workspace root, ignoring location {}.",
+                             location.ToJson().dump(-1));
+                 return std::nullopt;
+@@ -88,7 +90,7 @@ namespace {
+     std::filesystem::path root_path{};
+     if (root == "workspace") {
+         if (not ws_root) {
+-            Logger::Log(LogLevel::Warning,
++            Logger::Log(LogLevel::Debug,
+                         "Not in workspace root, ignoring location {}.",
+                         location.dump(-1));
+             return std::nullopt;
+@@ -139,6 +141,10 @@ namespace {
+         if (not rc_path) {
+             rc_path = std::filesystem::weakly_canonical(
+                 std::filesystem::absolute(kDefaultRCPath));
++            if (not FileSystemManager::IsFile(*rc_path)) {
++                rc_path = std::filesystem::weakly_canonical(
++                    std::filesystem::absolute(kFallbackRCPath));
++            }
+         }
+         else {
+             if (not FileSystemManager::IsFile(*rc_path)) {
+@@ -286,14 +292,6 @@ namespace {
+             }
+         }
+     }
+-    // read just path; overwritten if user provided it already
+-    if (not clargs->common.just_path) {
+-        auto just = ReadLocation(rc_config["just"],
+-                                 clargs->common.just_mr_paths->workspace_root);
+-        if (just) {
+-            clargs->common.just_path = just->first;
+-        }
+-    }
+     // read git binary path; overwritten if user provided it already
+     if (not clargs->common.git_path) {
+         auto git = ReadLocation(rc_config["git"],
+@@ -303,11 +301,14 @@ namespace {
+         }
+     }
+     // read the just file-arguments
+-    auto just_files = rc_config["just files"];
++    auto just_files = rc_config["must files"];
++    if (not just_files.IsNotNull()) {
++        just_files = rc_config["just files"];
++    }
+     if (just_files.IsNotNull()) {
+         if (not just_files->IsMap()) {
+             Logger::Log(LogLevel::Error,
+-                        "Configuration-file provided 'just files' has to be a "
++                        "Configuration-file provided 'must files' has to be a "
+                         "map, but found {}.",
+                         just_files->ToString());
+             std::exit(kExitConfigError);
+@@ -316,18 +317,21 @@ namespace {
+         clargs->just_cmd.config = ReadOptionalLocationList(
+             files["config"],
+             clargs->common.just_mr_paths->workspace_root,
+-            "'config' in 'just files'");
++            "'config' in 'must files'");
+         clargs->just_cmd.endpoint_configuration = ReadOptionalLocationList(
+             files["endpoint-configuration"],
+             clargs->common.just_mr_paths->workspace_root,
+-            "'endpoint-configuration' in 'just files'");
++            "'endpoint-configuration' in 'must files'");
+     }
+     // read additional just args; user can append, but does not overwrite
+-    auto just_args = rc_config["just args"];
++    auto just_args = rc_config["cmd args"];
++    if (not just_args.IsNotNull()) {
++        just_args = rc_config["just args"];
++    }
+     if (just_args.IsNotNull()) {
+         if (not just_args->IsMap()) {
+             Logger::Log(LogLevel::Error,
+-                        "Configuration-file provided 'just' arguments has to "
++                        "Configuration-file provided 'cmd' arguments has to "
+                         "be a map, but found {}",
+                         just_args->ToString());
+             std::exit(kExitConfigError);
+@@ -338,7 +342,7 @@ namespace {
+             if (not cmd_args->IsList()) {
+                 Logger::Log(
+                     LogLevel::Error,
+-                    "Configuration-file provided 'just' argument key {} has to "
++                    "Configuration-file provided 'cmd' argument key {} has to "
+                     "have as value a list of strings, but found {}",
+                     cmd_name,
+                     cmd_args->ToString());
+@@ -350,7 +354,7 @@ namespace {
+                 if (not arg->IsString()) {
+                     Logger::Log(
+                         LogLevel::Error,
+-                        "Configuration-file provided 'just' argument key {} "
++                        "Configuration-file provided 'cmd' argument key {} "
+                         "must have strings in its list value, but found {}",
+                         cmd_name,
+                         arg->ToString());
+diff --git a/src/other_tools/just_mr/rc.hpp b/src/other_tools/just_mr/rc.hpp
+index fe8e3d89..0c8568f5 100644
+--- a/src/other_tools/just_mr/rc.hpp
++++ b/src/other_tools/just_mr/rc.hpp
+@@ -24,6 +24,6 @@
+ /// \brief Read just-mrrc file and set up various configs. Return the path to
+ /// the repository config file, if any is provided.
+ [[nodiscard]] auto ReadJustMRRC(
+-    gsl::not_null<CommandLineArguments*> const& clargs)
++    gsl::not_null<MR::CommandLineArguments*> const& clargs)
+     -> std::optional<std::filesystem::path>;
+ #endif
+diff --git a/src/other_tools/just_mr/setup.cpp b/src/other_tools/just_mr/setup.cpp
+index e4430b79..eb6aee77 100644
+--- a/src/other_tools/just_mr/setup.cpp
++++ b/src/other_tools/just_mr/setup.cpp
+@@ -226,8 +226,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
+             : std::nullopt,
+         common_args.jobs,
+         multi_repo_tool_name,
+-        common_args.just_path ? common_args.just_path->string()
+-                              : kDefaultJustPath);
++        "must");
+ 
+     auto distdir_git_map =
+         CreateDistdirGitMap(&content_cas_map,
+diff --git a/src/other_tools/just_mr/setup_utils.cpp b/src/other_tools/just_mr/setup_utils.cpp
+index 7c78533c..2533d7a2 100644
+--- a/src/other_tools/just_mr/setup_utils.cpp
++++ b/src/other_tools/just_mr/setup_utils.cpp
+@@ -148,8 +148,7 @@ auto ReadConfiguration(
+     std::optional<std::filesystem::path> const& absent_file_opt) noexcept
+     -> std::shared_ptr<Configuration> {
+     if (not config_file_opt) {
+-        Logger::Log(LogLevel::Error, "Cannot find repository configuration.");
+-        std::exit(kExitConfigError);
++        return nullptr;
+     }
+     auto const& config_file = *config_file_opt;
+ 
+diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
+index 4d397902..d4675821 100644
+--- a/src/other_tools/just_mr/utils.hpp
++++ b/src/other_tools/just_mr/utils.hpp
+@@ -32,13 +32,16 @@
+ std::unordered_set<std::string> const kLocationTypes{"workspace",
+                                                      "home",
+                                                      "system"};
+-auto const kDefaultJustPath = "just";
+ auto const kDefaultGitPath = "git";
+-auto const kDefaultRCPath = StorageConfig::GetUserHome() / ".just-mrrc";
++auto const kDefaultRCPath = StorageConfig::GetUserHome() / ".mustrc";
+ auto const kDefaultBuildRoot = StorageConfig::kDefaultBuildRoot;
+ auto const kDefaultCheckoutLocationsFile =
+-    StorageConfig::GetUserHome() / ".just-local.json";
++    StorageConfig::GetUserHome() / ".must-local.json";
+ auto const kDefaultDistdirs = StorageConfig::GetUserHome() / ".distfiles";
++auto const kFallbackRCPath = StorageConfig::GetUserHome() / ".just-mrrc";
++auto const kFallbackBuildRoot = StorageConfig::kFallbackBuildRoot;
++auto const kFallbackCheckoutLocationsFile =
++    StorageConfig::GetUserHome() / ".just-local.json";
+ 
+ std::vector<std::string> const kTakeOver = {"bindings",
+                                             "target_file_name",
+@@ -58,15 +61,15 @@ struct JustSubCmdFlags {
+ 
+ // ordered, so that we have replicability
+ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+-    {"version",
+-     {.config = false,
+-      .build_root = false,
+-      .launch = false,
+-      .defines = false,
+-      .remote = false,
+-      .remote_props = false,
+-      .serve = false,
+-      .dispatch = false}},
++    //{"version",
++    // {.config = false,
++    //  .build_root = false,
++    //  .launch = false,
++    //  .defines = false,
++    //  .remote = false,
++    //  .remote_props = false,
++    //  .serve = false,
++    //  .dispatch = false}},
+     {"describe",
+      {.config = true,
+       .build_root = true,
+@@ -138,11 +141,22 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+       .remote = false,
+       .remote_props = false,
+       .serve = false,
+-      .dispatch = false}}};
++      .dispatch = false}},
++    {"traverse",
++     {.config = false,
++      .build_root = true,
++      .launch = true,
++      .defines = false,
++      .remote = true,
++      .remote_props = true,
++      .serve = false,
++      .dispatch = true}}};
+ 
+ nlohmann::json const kDefaultConfigLocations = nlohmann::json::array(
+     {{{"root", "workspace"}, {"path", "repos.json"}},
+      {{"root", "workspace"}, {"path", "etc/repos.json"}},
++     {{"root", "home"}, {"path", ".must-repos.json"}},
++     {{"root", "system"}, {"path", "etc/must-repos.json"}},
+      {{"root", "home"}, {"path", ".just-repos.json"}},
+      {{"root", "system"}, {"path", "etc/just-repos.json"}}});
+ 
+-- 

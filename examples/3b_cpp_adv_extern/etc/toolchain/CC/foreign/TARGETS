@@ -1,0 +1,14 @@
+// Target definitions
+{
+  // 'defaults' is the default target for setting foreign build tool settings.
+  // It uses the rule ['CC/foreign', 'defaults'].
+  defaults: {
+    type: ref('CC/foreign', 'defaults'),
+    // Executable name or absolute path for Make
+    MAKE: 'make',
+    // Executable name or absolute path for CMake
+    CMAKE: 'cmake',
+    // Search path for executables
+    PATH: ['/bin', '/usr/bin'],
+  },
+}

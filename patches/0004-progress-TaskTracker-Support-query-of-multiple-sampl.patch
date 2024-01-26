@@ -1,0 +1,70 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 24 Dec 2023 11:19:00 +0100
+Subject: [progress] TaskTracker: Support query of multiple samples
+
+---
+ .../progress_reporting/task_tracker.hpp       | 43 +++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+
+diff --git a/src/buildtool/progress_reporting/task_tracker.hpp b/src/buildtool/progress_reporting/task_tracker.hpp
+index 7fdfce31..73cf7ae1 100644
+--- a/src/buildtool/progress_reporting/task_tracker.hpp
++++ b/src/buildtool/progress_reporting/task_tracker.hpp
+@@ -15,6 +15,7 @@
+ #ifndef INCLUDED_SRC_BUILDTOOL_PROGRESS_REPORTING_TASK_TRACKER_HPP
+ #define INCLUDED_SRC_BUILDTOOL_PROGRESS_REPORTING_TASK_TRACKER_HPP
+ 
++#include <algorithm>
+ #include <cstddef>
+ #include <cstdint>
+ #include <mutex>
+@@ -56,6 +57,48 @@ class TaskTracker {
+         return result;
+     }
+ 
++    [[nodiscard]] auto Sample(int n) noexcept -> std::vector<std::string> {
++        std::unique_lock lock(m_);
++        if (running_.empty()) {
++            return {};
++        }
++
++        std::vector<std::pair<std::string, uint64_t>> tasks{};
++        tasks.reserve(n);
++
++        // obtain first n many tasks
++        auto it = running_.cbegin();
++        for (int i{}; i < n && it != running_.cend(); ++i) {
++            tasks.push_back(*(it++));
++        }
++
++        // sort latest first
++        std::sort(tasks.begin(), tasks.end(), [](auto a, auto b) {
++            return a.second > b.second;
++        });
++
++        auto head = 0;  // always points to latest
++        auto prio = tasks[head].second;
++        auto const size = tasks.size();
++        // find even newer tasks and add them to ring buffer
++        while (it != running_.cend()) {
++            if (it->second > prio) {
++                head = (head + size - 1) % size;
++                tasks[head].first = it->first;
++                prio = it->second;
++            }
++            ++it;
++        }
++
++        // compute output from ring buffer
++        std::vector<std::string> results{};
++        results.reserve(size);
++        for (int i{}; i < size; ++i) {
++            results.emplace_back(std::move(tasks[(head + i) % size].first));
++        }
++        return results;
++    }
++
+     [[nodiscard]] auto Active() noexcept -> std::size_t {
+         std::unique_lock lock(m_);
+         return running_.size();
+-- 

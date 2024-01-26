@@ -1,0 +1,44 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 24 Dec 2023 09:55:47 +0100
+Subject: [progress] Print action count instead of percentage
+
+---
+ .../progress_reporting/progress_reporter.cpp       | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
+index 94280fe0..2e8de0a4 100644
+--- a/src/buildtool/progress_reporting/progress_reporter.cpp
++++ b/src/buildtool/progress_reporting/progress_reporter.cpp
+@@ -25,6 +25,7 @@ auto ProgressReporter::Reporter(gsl::not_null<Statistics*> const& stats,
+     -> progress_reporter_t {
+     return BaseProgressReporter::Reporter([stats, progress, logger]() {
+         int total = gsl::narrow<int>(progress->OriginMap().size());
++        int digits = static_cast<int>(log10(total)) + 1;
+         // Note: order matters; queued has to be queried last
+         auto const& sample = progress->TaskTracker().Sample();
+         int cached = stats->ActionsCachedCounter();
+@@ -47,18 +48,13 @@ auto ProgressReporter::Reporter(gsl::not_null<Statistics*> const& stats,
+                     fmt::format(" ({}{})", sample, active > 1 ? ", ..." : "");
+             }
+         }
+-        constexpr int kOneHundred{100};
+-        int total_work = total - cached;
+-        int progress = kOneHundred;  // default if no work has to be done
+-        if (total_work > 0) {
+-            progress = run * kOneHundred / total_work;
+-        }
+         Logger::Log(logger,
+                     LogLevel::Progress,
+-                    "[{:3}%] {} cached, {} run, {} processing{}.",
+-                    progress,
++                    "[{:{}}/{}] {} cached, {} processing{}.",
++                    run + cached,
++                    digits,
++                    total,
+                     cached,
+-                    run,
+                     active,
+                     now_msg);
+     });
+-- 

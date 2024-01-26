@@ -1,0 +1,43 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 3 Mar 2024 18:52:08 +0100
+Subject: [misc] Introduce separate versioning
+
+... and encode upstream version via @JB.MAJOR.MINOR.
+---
+ src/buildtool/main/version.cpp | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/src/buildtool/main/version.cpp b/src/buildtool/main/version.cpp
+index 0dae24b8..3f25af4f 100644
+--- a/src/buildtool/main/version.cpp
++++ b/src/buildtool/main/version.cpp
+@@ -21,20 +21,24 @@
+ 
+ auto version() -> std::string {
+     std::size_t major = 1;
+-    std::size_t minor = 3;
++    std::size_t minor = 0;
+     std::size_t revision = 0;
+     std::string suffix = "~alpha";
++    std::string upstream = "@JB.1.3.0~alpha";
++
+ #ifdef VERSION_EXTRA_SUFFIX
+     suffix += VERSION_EXTRA_SUFFIX;
+ #endif
+ 
+     nlohmann::json version_info = {{"version", {major, minor, revision}},
+-                                   {"suffix", suffix}};
++                                   {"upstream", upstream}};
++
++    if (not suffix.empty()) {
++        version_info["suffix"] = suffix;
++    }
+ 
+ #ifdef SOURCE_DATE_EPOCH
+     version_info["SOURCE_DATE_EPOCH"] = (std::size_t)SOURCE_DATE_EPOCH;
+-#else
+-    version_info["SOURCE_DATE_EPOCH"] = nullptr;
+ #endif
+ 
+     return IndentOnlyUntilDepth(version_info, 2, 1, {});
+-- 

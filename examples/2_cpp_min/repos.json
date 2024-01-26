@@ -1,0 +1,20 @@
+{
+  "main": "example",
+  "repositories": {
+    "example": {
+      "repository": {"type": "file", "path": "."},
+      "bindings": {
+        "rules": "rules-cc"
+      }
+    },
+    "rules-cc": {
+      "repository": {
+        "type": "git",
+        "branch": "master",
+        "commit": "1ef4873691f3e37dcd7a8ffa4605caff1c7091f0",
+        "repository": "https://github.com/just-buildsystem/rules-cc",
+        "subdir": "rules"
+      }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+// Target definitions
+{
+  // "Meta target" collecting and combining all test reports
+  ALL: {
+    type: 'install',
+    // Taint this target with 'test' so it can depend on other targets that are
+    // tainted with 'test' (all test-targets are implicity tainted with 'test').
+    tainted: 'test',
+    // Dependencies (test targets to collect and combine reports from)
+    deps: [
+      'test_helloworld',
+      'test_libgreet',
+    ],
+  },
+
+  // Binary test for the "libgreet" library
+  test_libgreet: {
+    // Uses rule ["CC/test", "test"] (test binary) from bindings "rules"
+    type: ref_ext('rules', 'CC/test', 'test'),
+    // Name of the test
+    name: 'test_libgreet',
+    // Source files
+    srcs: ['test_libgreet.cpp'],
+    // Depends on the public top-level (export) target "libgreet"
+    'private-deps': [
+      ref('', 'libgreet'),
+    ],
+  },
+
+  // Shell test for the "helloworld" binary
+  test_helloworld: {
+    // Uses rule ["shell/test", "script"] from bindings "rules"
+    type: ref_ext('rules', 'shell/test', 'script'),
+    // Name of the test
+    name: 'test_helloworld',
+    // Test script (the actual script is defined below)
+    test: ['test_helloworld.sh'],
+    // Depends on the public top-level (export) target "helloworld"
+    deps: [
+      ref('', 'helloworld'),
+    ],
+  },
+
+  // Script used for shell test "test_helloworld" above
+  'test_helloworld.sh': {
+    type: 'file_gen',
+    name: 'test_helloworld.sh',
+    data: |||
+      #!/bin/sh
+
+      set -eu
+
+      readonly EXPECT="Hello World!"
+      readonly OUTPUT="$(./helloworld)"
+
+      if [ "$OUTPUT" != "$EXPECT" ]; then
+        echo "FAILURE: Expected output '$EXPECT', but got '$OUTPUT'"
+        exit 1
+      fi
+
+      echo "SUCCESS: Got expected output '$OUTPUT'"
+    |||,
+  },
+}

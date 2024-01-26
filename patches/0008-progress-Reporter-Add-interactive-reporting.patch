@@ -1,0 +1,400 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 24 Dec 2023 11:29:36 +0100
+Subject: [progress] Reporter: Add interactive reporting
+
+---
+ src/buildtool/common/cli.hpp                  |  22 ++-
+ src/buildtool/common/clidefaults.hpp          |   3 +
+ src/buildtool/main/main.cpp                   |   6 +-
+ src/buildtool/progress_reporting/TARGETS      |   1 +
+ .../base_progress_reporter.cpp                |  13 +-
+ .../base_progress_reporter.hpp                |   6 +-
+ .../progress_reporting/progress_reporter.cpp  | 126 +++++++++++++++++-
+ .../progress_reporting/progress_reporter.hpp  |   5 +-
+ src/other_tools/just_mr/cli.hpp               |  24 +++-
+ src/other_tools/just_mr/launch.cpp            |  14 ++
+ 10 files changed, 203 insertions(+), 17 deletions(-)
+
+diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
+index cf348bff..e7ff4914 100644
+--- a/src/buildtool/common/cli.hpp
++++ b/src/buildtool/common/cli.hpp
+@@ -52,6 +52,8 @@ struct LogArguments {
+     std::optional<LogLevel> restrict_stderr_log_limit{};
+     bool plain_log{false};
+     bool log_append{false};
++    std::size_t prog_interval{kDefaultProgInterval};
++    float prog_backoff_factor{kDefaultProgBackoffFactor};
+ };
+ 
+ /// \brief Arguments required for analysing targets.
+@@ -260,13 +262,27 @@ static inline auto SetupLogArguments(
+            "Restrict logging on console to the minimum of the specified "
+            "--log-limit and this value")
+         ->type_name("NUM");
+-    app->add_flag("--plain-log",
+-                  clargs->plain_log,
+-                  "Do not use ANSI escape sequences to highlight messages.");
++    app->add_flag_function(
++        "--plain-log",
++        [clargs](auto /*unused*/) {
++            clargs->plain_log = true;
++            clargs->prog_interval = kDefaultProgIntervalPlain;
++        },
++        "Disable color and interactive progress.");
+     app->add_flag(
+         "--log-append",
+         clargs->log_append,
+         "Append messages to log file instead of overwriting existing.");
++    app->add_option(
++        "--prog-interval",
++        clargs->prog_interval,
++        fmt::format("Progress interval in milliseconds (Default {}).",
++                    kDefaultProgInterval));
++    app->add_option(
++        "--prog-backoff-factor",
++        clargs->prog_backoff_factor,
++        fmt::format("Progress interval backoff factor (Default {}).",
++                    kDefaultProgBackoffFactor));
+ }
+ 
+ static inline auto SetupAnalysisArguments(
+diff --git a/src/buildtool/common/clidefaults.hpp b/src/buildtool/common/clidefaults.hpp
+index 88c55b2e..e0e72cbf 100644
+--- a/src/buildtool/common/clidefaults.hpp
++++ b/src/buildtool/common/clidefaults.hpp
+@@ -21,6 +21,9 @@
+ #include "src/buildtool/logging/log_level.hpp"
+ 
+ constexpr auto kDefaultLogLevel = LogLevel::Progress;
++constexpr auto kDefaultProgInterval = std::size_t{100};
++constexpr auto kDefaultProgIntervalPlain = std::size_t{3000};
++constexpr auto kDefaultProgBackoffFactor = 1.0F;
+ static inline const std::vector<std::string> kDefaultLauncher =
+     std::vector<std::string>{"env", "--"};
+ 
+diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
+index a4ea8688..f01c7815 100644
+--- a/src/buildtool/main/main.cpp
++++ b/src/buildtool/main/main.cpp
+@@ -947,7 +947,11 @@ auto main(int argc, char* argv[]) -> int {
+             RemoteExecutionConfig::DispatchList(),
+             &stats,
+             &progress,
+-            ProgressReporter::Reporter(&stats, &progress)};
++            ProgressReporter::Reporter(&stats,
++                                       &progress,
++                                       /*logger=*/nullptr,
++                                       /*fancy=*/true,
++                                       arguments.log)};
+ 
+         if (arguments.cmd == SubCommand::kInstallCas) {
+             if (not repo_config.SetGitCAS(StorageConfig::GitRoot())) {
+diff --git a/src/buildtool/progress_reporting/TARGETS b/src/buildtool/progress_reporting/TARGETS
+index adc6f8c5..2629b32e 100644
+--- a/src/buildtool/progress_reporting/TARGETS
++++ b/src/buildtool/progress_reporting/TARGETS
+@@ -28,6 +28,7 @@
+     [ "base_progress_reporter"
+     , "progress"
+     , ["@", "gsl", "", "gsl"]
++    , ["src/buildtool/common", "cli"]
+     , ["src/buildtool/common", "common"]
+     , ["src/buildtool/logging", "logging"]
+     ]
+diff --git a/src/buildtool/progress_reporting/base_progress_reporter.cpp b/src/buildtool/progress_reporting/base_progress_reporter.cpp
+index 7cec5001..080955a6 100644
+--- a/src/buildtool/progress_reporting/base_progress_reporter.cpp
++++ b/src/buildtool/progress_reporting/base_progress_reporter.cpp
+@@ -35,22 +35,23 @@ void CallReport(std::function<void(void)> const& report) noexcept {
+ }
+ }  // namespace
+ 
+-auto BaseProgressReporter::Reporter(std::function<void(void)> report) noexcept
++auto BaseProgressReporter::Reporter(std::function<void(void)> report,
++                                    std::int64_t start_delay,
++                                    float backoff_factor) noexcept
+     -> progress_reporter_t {
+-    return [report = std::move(report)](std::atomic<bool>* done,
+-                                        std::condition_variable* cv) {
++    return [start_delay, backoff_factor, report = std::move(report)](
++               std::atomic<bool>* done, std::condition_variable* cv) {
+         std::mutex m;
+         std::unique_lock<std::mutex> lock(m);
+-        std::int64_t delay = kStartDelayMillis;
+         bool called{};
++        auto delay = start_delay;
+         while (not *done) {
+             cv->wait_for(lock, std::chrono::milliseconds(delay));
+             if (not *done) {
+                 CallReport(report);
+                 called = true;
+             }
+-            delay = delay * kDelayScalingFactorNumerator /
+-                    kDelayScalingFactorDenominator;
++            delay = delay * backoff_factor;
+         }
+         if (called) {
+             // call a final time to print the latest state
+diff --git a/src/buildtool/progress_reporting/base_progress_reporter.hpp b/src/buildtool/progress_reporting/base_progress_reporter.hpp
+index 08bb0d74..6bedb7a0 100644
+--- a/src/buildtool/progress_reporting/base_progress_reporter.hpp
++++ b/src/buildtool/progress_reporting/base_progress_reporter.hpp
+@@ -29,7 +29,11 @@ using progress_reporter_t =
+ class BaseProgressReporter {
+   public:
+     [[nodiscard]] static auto Reporter(
+-        std::function<void(void)> report) noexcept -> progress_reporter_t;
++        std::function<void(void)> report,
++        std::int64_t start_delay = kStartDelayMillis,
++        float backoff_factor =
++            static_cast<float>(kDelayScalingFactorNumerator) /
++            kDelayScalingFactorDenominator) noexcept -> progress_reporter_t;
+ 
+   private:
+     constexpr static std::int64_t kStartDelayMillis = 3000;
+diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
+index 2e8de0a4..28330c49 100644
+--- a/src/buildtool/progress_reporting/progress_reporter.cpp
++++ b/src/buildtool/progress_reporting/progress_reporter.cpp
+@@ -16,13 +16,137 @@
+ 
+ #include <string>
+ 
++#include "fmt/color.h"
+ #include "fmt/core.h"
+ #include "src/buildtool/logging/log_level.hpp"
+ 
++namespace {
++
++class FancyReporter {
++  private:
++    constexpr static int kFancyMaxTasks = 8;
++    constexpr static int kFancyMaxCount = 10;
++    static inline const fmt::text_style kFancyColor =
++        fg(fmt::color::light_green);
++
++    struct State {
++        int cached;
++        int run;
++        int queued;
++        std::vector<std::string> samples;
++        auto operator==(State const& other) const -> bool {
++            return cached == other.cached and run == other.run and
++                   queued == other.queued and samples == other.samples;
++        }
++    };
++
++  public:
++    explicit FancyReporter(gsl::not_null<Statistics*> const& stats,
++                           gsl::not_null<Progress*> const& progress,
++                           Logger const* logger,
++                           bool plain_log)
++        : stats_{stats},
++          progress_{progress},
++          logger_{logger},
++          plain_log_{plain_log} {}
++
++    [[nodiscard]] auto GetOriginString(std::string const& sample)
++        -> std::string {
++        auto const& origin_map = progress_->OriginMap();
++        auto origins = origin_map.find(sample);
++        if (origins != origin_map.end() and !origins->second.empty()) {
++            auto const& origin = origins->second[0];
++            return fmt::format(
++                "{}#{}", origin.first.target.ToString(), origin.second);
++        }
++        return sample;
++    }
++
++    [[nodiscard]] auto Colorize(std::string msg) -> std::string {
++        if (plain_log_) {
++            return msg;
++        }
++        return fmt::format(kFancyColor, "{}", msg);
++    }
++
++    void operator()() {
++        int total = gsl::narrow<int>(progress_->OriginMap().size());
++        int digits = (total > 0 ? static_cast<int>(log10(total)) : 0) + 1;
++
++        // Note: order matters; queued has to be queried last
++        State state = {stats_->ActionsCachedCounter(),
++                       stats_->ActionsExecutedCounter(),
++                       stats_->ActionsQueuedCounter(),
++                       progress_->TaskTracker().Sample(kFancyMaxTasks)};
++
++        if (not plain_log_ and state_ == state and count_++ < kFancyMaxCount) {
++            // only update on change, but honor max count to force redraw
++            return;
++        }
++        count_ = 0;
++        state_ = state;
++
++        int active = state_.queued - state_.run - state_.cached;
++
++        if (plain_log_) {
++            if (active > 0 and !state_.samples.empty()) {
++                Logger::Log(
++                    logger_,
++                    LogLevel::Progress,
++                    Colorize("[{:{}}/{}] {} cached, {} processing ({})"),
++                    state_.run + state_.cached,
++                    digits,
++                    total,
++                    state_.cached,
++                    active,
++                    GetOriginString(state_.samples.front()));
++            }
++            return;
++        }
++
++        std::string now_msg{};
++        if (active > 0 and !state_.samples.empty()) {
++            auto size = state_.samples.size();
++            for (int i{0}; i < size; ++i) {
++                auto const& sample = state_.samples[size - 1 - i];
++                now_msg += fmt::format("#{}: {}\n", i, GetOriginString(sample));
++            }
++        }
++
++        Logger::LogVolatile(logger_,
++                            LogLevel::Progress,
++                            Colorize("{}[{:{}}/{}] {} cached, {} processing."),
++                            now_msg,
++                            state_.run + state_.cached,
++                            digits,
++                            total,
++                            state_.cached,
++                            active);
++    }
++
++  private:
++    gsl::not_null<Statistics*> stats_;
++    gsl::not_null<Progress*> progress_;
++    Logger const* logger_;
++    bool plain_log_{};
++    int count_{};
++    State state_{};
++};
++
++}  // namespace
++
+ auto ProgressReporter::Reporter(gsl::not_null<Statistics*> const& stats,
+                                 gsl::not_null<Progress*> const& progress,
+-                                Logger const* logger) noexcept
++                                Logger const* logger,
++                                bool fancy,
++                                LogArguments const& args) noexcept
+     -> progress_reporter_t {
++    if (fancy) {
++        return BaseProgressReporter::Reporter(
++            FancyReporter{stats, progress, logger, args.plain_log},
++            args.prog_interval,
++            args.prog_backoff_factor);
++    }
+     return BaseProgressReporter::Reporter([stats, progress, logger]() {
+         int total = gsl::narrow<int>(progress->OriginMap().size());
+         int digits = static_cast<int>(log10(total)) + 1;
+diff --git a/src/buildtool/progress_reporting/progress_reporter.hpp b/src/buildtool/progress_reporting/progress_reporter.hpp
+index 13136579..0ea0cace 100644
+--- a/src/buildtool/progress_reporting/progress_reporter.hpp
++++ b/src/buildtool/progress_reporting/progress_reporter.hpp
+@@ -16,6 +16,7 @@
+ #define INCLUDED_SRC_BUILDTOOL_PROGRESS_REPORTING_PROGRESS_REPORTER_HPP
+ 
+ #include "gsl/gsl"
++#include "src/buildtool/common/cli.hpp"
+ #include "src/buildtool/common/statistics.hpp"
+ #include "src/buildtool/logging/logger.hpp"
+ #include "src/buildtool/progress_reporting/base_progress_reporter.hpp"
+@@ -25,7 +26,9 @@ class ProgressReporter {
+   public:
+     [[nodiscard]] static auto Reporter(gsl::not_null<Statistics*> const& stats,
+                                        gsl::not_null<Progress*> const& progress,
+-                                       Logger const* logger = nullptr) noexcept
++                                       Logger const* logger = nullptr,
++                                       bool fancy = false,
++                                       LogArguments const& args = {}) noexcept
+         -> progress_reporter_t;
+ };
+ 
+diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
+index a40cf9b3..aee878bd 100644
+--- a/src/other_tools/just_mr/cli.hpp
++++ b/src/other_tools/just_mr/cli.hpp
+@@ -64,6 +64,8 @@ struct MultiRepoLogArguments {
+     std::optional<LogLevel> restrict_stderr_log_limit{};
+     bool plain_log{false};
+     bool log_append{false};
++    std::size_t prog_interval{kDefaultProgInterval};
++    float prog_backoff_factor{kDefaultProgBackoffFactor};
+ };
+ 
+ struct MultiRepoSetupArguments {
+@@ -99,7 +101,7 @@ struct ForwardOnlyArguments {
+     std::vector<std::string> remote_execution_properties{};
+ };
+ 
+-namespace MR { // to avoid clash with backend (just) types
++namespace MR {  // to avoid clash with backend (just) types
+ 
+ enum class SubCommand {
+     kUnknown,
+@@ -284,13 +286,27 @@ static inline auto SetupMultiRepoLogArguments(
+            "Restrict logging on console to the minimum of the specified "
+            "--log-limit and this value")
+         ->type_name("NUM");
+-    app->add_flag("--plain-log",
+-                  clargs->plain_log,
+-                  "Do not use ANSI escape sequences to highlight messages.");
++    app->add_flag_function(
++        "--plain-log",
++        [clargs](auto /*unused*/) {
++            clargs->plain_log = true;
++            clargs->prog_interval = kDefaultProgIntervalPlain;
++        },
++        "Disable color and interactive progress.");
+     app->add_flag(
+         "--log-append",
+         clargs->log_append,
+         "Append messages to log file instead of overwriting existing.");
++    app->add_option(
++        "--prog-interval",
++        clargs->prog_interval,
++        fmt::format("Progress message interval in milliseconds (Default {}).",
++                    kDefaultProgInterval));
++    app->add_option(
++        "--prog-backoff-factor",
++        clargs->prog_backoff_factor,
++        fmt::format("Progress interval backoff factor (Default {}).",
++                    kDefaultProgBackoffFactor));
+ }
+ 
+ static inline void SetupMultiRepoSetupArguments(
+diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
+index 7a9a44de..35716ebb 100644
+--- a/src/other_tools/just_mr/launch.cpp
++++ b/src/other_tools/just_mr/launch.cpp
+@@ -138,6 +138,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+     }
+     if (log_args.plain_log) {
+         cmd.emplace_back("--plain-log");
++        if (log_args.prog_interval != kDefaultProgIntervalPlain) {
++            cmd.emplace_back("--prog-interval");
++            cmd.emplace_back(std::to_string(log_args.prog_interval));
++        }
++    }
++    else {
++        if (log_args.prog_interval != kDefaultProgInterval) {
++            cmd.emplace_back("--prog-interval");
++            cmd.emplace_back(std::to_string(log_args.prog_interval));
++        }
++    }
++    if (log_args.prog_backoff_factor != kDefaultProgBackoffFactor) {
++        cmd.emplace_back("--prog-backoff-factor");
++        cmd.emplace_back(std::to_string(log_args.prog_backoff_factor));
+     }
+     if (supports_defines) {
+         if (just_cmd_args.config) {
+-- 

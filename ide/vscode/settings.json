@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.TARGETS": "jsonnet",
+        "*.RULES": "jsonnet",
+        "*.EXPRESSIONS": "jsonnet",
+        "TARGETS": "jsonnet",
+        "RULES": "jsonnet",
+        "EXPRESSIONS": "jsonnet"
+    },
+    "jsonnet.executablePath": "must-lint",
+    "jsonnet.outputFormat": "json"
+}

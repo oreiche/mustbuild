@@ -1,0 +1,110 @@
+local _utils = import 'utils.libsonnet';
+
+// Default cross-compilation target
+local _cross_defaults = {
+  arch: 'x86_64',
+  os: 'linux',
+};
+
+// Target definitions
+{
+  // Main dispatch target
+  defaults: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TARGET_ARCH'],
+    // Inherit from 'cross_toolchain' if 'TARGET_ARCH' is set.
+    base: [select(var('TARGET_ARCH'), 'cross_toolchain', 'native_toolchain')],
+  },
+
+  // Dispatch target for native toolchains
+  native_toolchain: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TOOLCHAIN_CONFIG'],
+    base:
+      // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('generic' if unset)
+      //   'generic' -> target generic
+      //   'gnu'     -> target gcc
+      //   'clang'   -> target clang
+      //   *         -> fail
+      case(expr=_utils.get('FAMILY', 'TOOLCHAIN_CONFIG', default='generic'),
+           case={
+             generic: ['native_generic'],
+             gnu: ['native_gcc'],
+             clang: ['native_clang'],
+           },
+           default=fail('unsupported compiler family'),
+      ),
+  },
+
+  // Compiler generic for native compilation
+  native_generic: {
+    type: ref('CC', 'defaults'),
+    CC: 'cc',
+    CXX: 'c++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Compiler gcc for native compilation
+  native_gcc: {
+    type: ref('CC', 'defaults'),
+    CC: 'gcc',
+    CXX: 'g++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Compiler clang for native compilation
+  native_clang: {
+    type: ref('CC', 'defaults'),
+    CC: 'clang',
+    CXX: 'clang++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Dispatch target for cross toolchains
+  cross_toolchain: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TOOLCHAIN_CONFIG'],
+    base:
+      // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('gnu' if unset)
+      //   'gnu'   -> target gcc
+      //   'clang' -> target clang
+      //   *       -> fail
+      case(
+        expr=_utils.get('FAMILY', 'TOOLCHAIN_CONFIG', default='gnu'),
+        case={
+          gnu: ['cross_gcc'],
+          clang: ['cross_clang'],
+        },
+        default=fail('cross-compiliation requires family "gnu" or "clang"'),
+      ),
+  },
+
+  // Compiler gcc for cross-compilation
+  cross_gcc: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TARGET_ARCH', 'OS'],
+    CC: join([ _utils.cross_prefix('TARGET_ARCH', 'OS', _cross_defaults),
+               '-gcc']),
+    CXX: join([ _utils.cross_prefix('TARGET_ARCH', 'OS', _cross_defaults),
+                '-g++']),
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Compiler clang for cross-compilation
+  cross_clang: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TARGET_ARCH', 'OS'],
+    CC: 'clang',
+    CXX: 'clang++',
+    CFLAGS: [ '-target',
+              _utils.cross_prefix('TARGET_ARCH', 'OS', _cross_defaults)],
+    CXXFLAGS: [ '-target',
+                _utils.cross_prefix('TARGET_ARCH', 'OS', _cross_defaults)],
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+}

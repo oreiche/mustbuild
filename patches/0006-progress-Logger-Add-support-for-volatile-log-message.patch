@@ -1,0 +1,238 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Mon, 25 Dec 2023 12:11:15 +0100
+Subject: [progress] Logger: Add support for volatile log messages
+
+---
+ src/buildtool/logging/log_sink.hpp         |  4 +-
+ src/buildtool/logging/log_sink_cmdline.hpp | 25 ++++++++-
+ src/buildtool/logging/log_sink_file.hpp    |  3 +-
+ src/buildtool/logging/logger.hpp           | 65 +++++++++++++++++++---
+ 4 files changed, 86 insertions(+), 11 deletions(-)
+
+diff --git a/src/buildtool/logging/log_sink.hpp b/src/buildtool/logging/log_sink.hpp
+index f80b955c..e33c71c4 100644
+--- a/src/buildtool/logging/log_sink.hpp
++++ b/src/buildtool/logging/log_sink.hpp
+@@ -37,9 +37,11 @@ class ILogSink {
+ 
+     /// \brief Thread-safe emitting of log messages.
+     /// Logger might be 'nullptr' if called from the global context.
++    /// \param clear    Message will be cleared by next log message.
+     virtual void Emit(Logger const* logger,
+                       LogLevel level,
+-                      std::string const& msg) const noexcept = 0;
++                      std::string const& msg,
++                      bool clear) const noexcept = 0;
+ 
+   protected:
+     /// \brief Helper class for line iteration with std::istream_iterator.
+diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/log_sink_cmdline.hpp
+index 89990f1c..4219f95c 100644
+--- a/src/buildtool/logging/log_sink_cmdline.hpp
++++ b/src/buildtool/logging/log_sink_cmdline.hpp
+@@ -15,6 +15,7 @@
+ #ifndef INCLUDED_SRC_BUILDTOOL_LOGGING_LOG_SINK_CMDLINE_HPP
+ #define INCLUDED_SRC_BUILDTOOL_LOGGING_LOG_SINK_CMDLINE_HPP
+ 
++#include <cstdint>
+ #include <iterator>
+ #include <memory>
+ #include <mutex>
+@@ -28,6 +29,10 @@
+ #include "src/buildtool/logging/log_sink.hpp"
+ #include "src/buildtool/logging/logger.hpp"
+ 
++#ifdef __unix__
++constexpr auto kClearCmd = "\033[A\r\033[0K";
++#endif
++
+ class LogSinkCmdLine final : public ILogSink {
+   public:
+     static auto CreateFactory(bool colored = true,
+@@ -50,7 +55,8 @@ class LogSinkCmdLine final : public ILogSink {
+     /// \brief Thread-safe emitting of log messages to stderr.
+     void Emit(Logger const* logger,
+               LogLevel level,
+-              std::string const& msg) const noexcept final {
++              std::string const& msg,
++              bool clear) const noexcept final {
+         static std::mutex mutex{};
+ 
+         if (restrict_level_ and
+@@ -68,13 +74,28 @@ class LogSinkCmdLine final : public ILogSink {
+         auto cont_prefix = std::string(prefix.size(), ' ');
+         prefix = FormatPrefix(level, prefix);
+         bool msg_on_continuation{false};
+-        if (logger != nullptr and msg.find('\n') != std::string::npos) {
++        auto num_lines = 1 + std::count(msg.begin(), msg.end(), '\n');
++        if (logger != nullptr and num_lines > 1) {
+             cont_prefix = "    ";
+             msg_on_continuation = true;
+         }
+ 
+         {
+             std::lock_guard lock{mutex};
++
++#ifdef __unix__
++            static int64_t last_num_lines{};
++            if (last_num_lines > 0) {
++                // clear potential last_num_lines
++                std::string clear_str{};
++                clear_str.reserve(last_num_lines * std::strlen(kClearCmd));
++                for (int i{}; i < last_num_lines; ++i) {
++                    clear_str.append(kClearCmd);
++                }
++                fmt::print(stderr, "{}", clear_str);
++            }
++            last_num_lines = clear > 0 ? num_lines : 0;
++#endif
+             if (msg_on_continuation) {
+                 fmt::print(stderr, "{}\n", prefix);
+                 prefix = cont_prefix;
+diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log_sink_file.hpp
+index f99ce769..20313463 100644
+--- a/src/buildtool/logging/log_sink_file.hpp
++++ b/src/buildtool/logging/log_sink_file.hpp
+@@ -99,7 +99,8 @@ class LogSinkFile final : public ILogSink {
+     /// every canonical file path shared across all instances of this class.
+     void Emit(Logger const* logger,
+               LogLevel level,
+-              std::string const& msg) const noexcept final {
++              std::string const& msg,
++              bool /*unused*/) const noexcept final {
+ #ifdef __unix__  // support nanoseconds for timestamp
+         timespec ts{};
+         clock_gettime(CLOCK_REALTIME, &ts);
+diff --git a/src/buildtool/logging/logger.hpp b/src/buildtool/logging/logger.hpp
+index bc380e6a..07900d8f 100644
+--- a/src/buildtool/logging/logger.hpp
++++ b/src/buildtool/logging/logger.hpp
+@@ -72,8 +72,12 @@ class Logger {
+               std::string const& msg,
+               T_Args&&... args) const noexcept {
+         if (static_cast<int>(level) <= static_cast<int>(log_limit_)) {
+-            FormatAndForward(
+-                this, sinks_, level, msg, std::forward<T_Args>(args)...);
++            FormatAndForward(this,
++                             sinks_,
++                             level,
++                             msg,
++                             /*clear=*/false,
++                             std::forward<T_Args>(args)...);
+         }
+     }
+ 
+@@ -81,7 +85,8 @@ class Logger {
+     void Emit(LogLevel level,
+               MessageCreateFunc const& msg_creator) const noexcept {
+         if (static_cast<int>(level) <= static_cast<int>(log_limit_)) {
+-            FormatAndForward(this, sinks_, level, msg_creator());
++            FormatAndForward(
++                this, sinks_, level, msg_creator(), /*clear=*/false);
+         }
+     }
+ 
+@@ -96,6 +101,24 @@ class Logger {
+                              LogConfig::Sinks(),
+                              level,
+                              msg,
++                             /*clear=*/false,
++                             std::forward<T_Args>(args)...);
++        }
++    }
++
++    /// \brief Log message that will be overwritten by the next log message.
++    /// Not all sinks support overwrite.
++    template <class... T_Args>
++    static void LogVolatile(LogLevel level,
++                            std::string const& msg,
++                            T_Args&&... args) noexcept {
++        if (static_cast<int>(level) <=
++            static_cast<int>(LogConfig::LogLimit())) {
++            FormatAndForward(nullptr,
++                             LogConfig::Sinks(),
++                             level,
++                             msg,
++                             /*clear=*/true,
+                              std::forward<T_Args>(args)...);
+         }
+     }
+@@ -105,7 +128,11 @@ class Logger {
+                     MessageCreateFunc const& msg_creator) noexcept {
+         if (static_cast<int>(level) <=
+             static_cast<int>(LogConfig::LogLimit())) {
+-            FormatAndForward(nullptr, LogConfig::Sinks(), level, msg_creator());
++            FormatAndForward(nullptr,
++                             LogConfig::Sinks(),
++                             level,
++                             msg_creator(),
++                             /*clear=*/false);
+         }
+     }
+ 
+@@ -125,10 +152,32 @@ class Logger {
+                 logger != nullptr ? logger->sinks_ : LogConfig::Sinks(),
+                 level,
+                 msg,
++                /*clear=*/false,
+                 std::forward<T_Args>(args)...);
+         }
+     }
+ 
++    /// \brief Generic logging method with log message that will be overwritten
++    /// by the next log message. Provides a common interface between the global
++    /// logger and named instances, hidden from the outside caller.
++    /// For named instances no global configuration is used.
++    template <class... T_Args>
++    static void LogVolatile(Logger const* logger,
++                            LogLevel level,
++                            std::string const& msg,
++                            T_Args&&... args) noexcept {
++        if (static_cast<int>(level) <=
++            static_cast<int>(logger != nullptr ? logger->log_limit_
++                                               : LogConfig::LogLimit())) {
++            FormatAndForward(logger,
++                             LogConfig::Sinks(),
++                             level,
++                             msg,
++                             /*clear=*/true,
++                             std::forward<T_Args>(args)...);
++        }
++    }
++
+     /// \brief Generic logging method with provided message creator. Provides a
+     /// common interface between the global logger and named instances, hidden
+     /// from the outside caller.
+@@ -143,7 +192,8 @@ class Logger {
+                 logger,
+                 logger != nullptr ? logger->sinks_ : LogConfig::Sinks(),
+                 level,
+-                msg_creator());
++                msg_creator(),
++                /*clear=*/false);
+         }
+     }
+ 
+@@ -158,18 +208,19 @@ class Logger {
+                                  std::vector<ILogSink::Ptr> const& sinks,
+                                  LogLevel level,
+                                  std::string const& msg,
++                                 bool clear,
+                                  T_Args&&... args) noexcept {
+         if constexpr (sizeof...(T_Args) == 0) {
+             // forward to sinks
+             std::for_each(sinks.cbegin(), sinks.cend(), [&](auto& sink) {
+-                sink->Emit(logger, level, msg);
++                sink->Emit(logger, level, msg, clear);
+             });
+         }
+         else {
+             // format the message
+             auto fmsg = fmt::vformat(msg, fmt::make_format_args(args...));
+             // recursive call without format arguments
+-            FormatAndForward(logger, sinks, level, fmsg);
++            FormatAndForward(logger, sinks, level, fmsg, clear);
+         }
+     }
+ };
+-- 

@@ -1,0 +1,32 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 24 Dec 2023 10:41:46 +0100
+Subject: [progress] GraphTraverser: Print number of omitted actions
+
+---
+ src/buildtool/graph_traverser/graph_traverser.hpp | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
+index 74fced61..da516dfd 100644
+--- a/src/buildtool/graph_traverser/graph_traverser.hpp
++++ b/src/buildtool/graph_traverser/graph_traverser.hpp
+@@ -492,11 +492,15 @@ class GraphTraverser {
+             Logger::Log(logger_, LogLevel::Info, ss.str());
+         }
+         else {
++            int queued = stats_->ActionsQueuedCounter();
++            int omitted = progress_->OriginMap().size() - queued;
+             Logger::Log(logger_,
+                         LogLevel::Info,
+-                        "Processed {} actions, {} cache hits.",
+-                        stats_->ActionsQueuedCounter(),
+-                        stats_->ActionsCachedCounter());
++                        "Processed {} actions, {} cache hits{}.",
++                        queued,
++                        stats_->ActionsCachedCounter(),
++                        omitted > 0 ? fmt::format(", {} omitted", omitted)
++                                    : std::string{});
+         }
+     }
+ 
+-- 

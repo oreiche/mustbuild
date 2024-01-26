@@ -1,0 +1,20 @@
+{
+  // Target "greet"
+  greet: {
+    // Use rule ["CC", "library"] from binding "rules"
+    type: ref_ext('rules', 'CC', 'library'),
+    // Use variable 'BUILD_SHARED'
+    arguments_config: ['BUILD_SHARED'],
+    // Library name: "libgreet.{a,so}"
+    name: 'greet',
+    // Library type: static or shared (depends on 'BUILD_SHARED')
+    shared: var('BUILD_SHARED', default=false),
+    // Public header files
+    hdrs: ['greet.hpp'],
+    // Source files
+    srcs: ['greet.cpp'],
+    // "stage" (prefix for public headers and produced library)
+    //   -> consumers include this library via '#include <greet/greet.h>
+    stage: 'greet',
+  },
+}

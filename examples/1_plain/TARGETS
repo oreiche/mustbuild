@@ -1,0 +1,61 @@
+{
+  // Generic target 'simple_greeter'
+  //  - produces file 'out.txt'
+  simple_greeter: {
+    type: 'generic',
+    cmds: ['printf "Hello World\n" > out.txt'],
+    outs: ['out.txt'],
+  },
+
+  // Generic target 'file_greeter'
+  //  - produces file 'out.txt'
+  //  - depends on local file 'name.txt'
+  file_greeter: {
+    type: 'generic',
+    // Field 'cmds' expects list of strings, the commands.
+    // -> Function 'lines()' generates list of strings from multi-line string.
+    cmds: lines(|||
+      printf "Hello " > out.txt
+      cat name.txt >> out.txt
+    |||),
+    outs: ['out.txt'],
+    deps: ['name.txt'],
+  },
+
+  // Generic target 'input_greeter'
+  //  - produces file 'out.txt'
+  //  - depends on target 'input.txt'
+  input_greeter: {
+    type: 'generic',
+    cmds: lines(|||
+      printf "Hello " > out.txt
+      cat input.txt >> out.txt
+    |||),
+    outs: ['out.txt'],
+    // Dependency 'input.txt' is a target (see below), not a file!
+    deps: ['input.txt'],
+  },
+
+  // File-gen target 'input.txt'
+  //  - produces file 'input.txt'
+  //  - containing file from field 'data'
+  'input.txt': {
+    type: 'file_gen',
+    // We want to read variable 'INPUT_STRING'.
+    arguments_config: ['INPUT_STRING'],
+    name: 'input.txt',
+    // Use content of variable 'INPUT_STRING' if set, or else use 'Universe\n'
+    data: var('INPUT_STRING', default='Universe\n'),
+  },
+
+  // Install target 'ALL'
+  //  - stages outputs from greeters to specified file paths
+  ALL: {
+    type: 'install',
+    files: {
+      'out/simple.txt': 'simple_greeter',
+      'out/file.txt': 'file_greeter',
+      'out/input.txt': 'input_greeter',
+    },
+  },
+}

@@ -1,0 +1,72 @@
+{
+  "main": "example",
+  "repositories": {
+    "example": {
+      "repository": {"type": "file", "path": "."},
+      "bindings": {
+        "rules": "rules/flags",
+        "fmtlib": "fmtlib",
+        "gtest": "gtest"
+      }
+    },
+    "rules-cc": {
+      "repository": {
+        "type": "git",
+        "branch": "master",
+        "commit": "1ef4873691f3e37dcd7a8ffa4605caff1c7091f0",
+        "repository": "https://github.com/just-buildsystem/rules-cc",
+        "subdir": "rules"
+      }
+    },
+    "root/flags": {
+      "repository": {"type": "file", "path": "etc/flags"}
+    },
+    "root/toolchain": {
+      "repository": {"type": "file", "path": "etc/toolchain"}
+    },
+    "root/extern": {
+      "repository": {"type": "file", "path": "etc/extern"}
+    },
+    "rules/flags": {
+      "repository": "rules-cc",
+      "target_root": "root/flags",
+      "rule_root": "rules-cc",
+      "bindings": {
+        "toolchain": "rules/toolchain"
+      }
+    },
+    "rules/toolchain": {
+      "repository": "rules-cc",
+      "target_root": "root/toolchain",
+      "rule_root": "rules-cc"
+    },
+    "fmtlib": {
+      "repository": {
+        "type": "git",
+        "repository": "https://github.com/fmtlib/fmt.git",
+        "commit": "e69e5f977d458f2650bb346dadf2ad30c5320281",
+        "branch": "10.2.1",
+        "mirrors": ["ssh://git@github.com:fmtlib/fmt.git"]
+      },
+      "target_root": "root/extern",
+      "target_file_name": "fmtlib.TARGETS",
+      "bindings": {
+        "rules": "rules/toolchain"
+      }
+    },
+    "gtest": {
+      "repository": {
+        "type": "git",
+        "repository": "https://github.com/google/googletest.git",
+        "commit": "f8d7d77c06936315286eb55f8de22cd23c188571",
+        "branch": "v1.14.0",
+        "mirrors": ["ssh://git@github.com:google/googletest.git"]
+      },
+      "target_root": "root/extern",
+      "target_file_name": "gtest.TARGETS",
+      "bindings": {
+        "rules": "rules/toolchain"
+      }
+    }
+  }
+}

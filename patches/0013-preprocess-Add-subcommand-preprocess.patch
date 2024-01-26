@@ -1,0 +1,302 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Thu, 28 Dec 2023 15:53:45 +0100
+Subject: [preprocess] Add subcommand 'preprocess'
+
+---
+ share/man/must-backend.5.md       | 22 +++++++++---
+ share/man/must.1.md               |  2 +-
+ src/buildtool/common/cli.hpp      | 16 +++++++++
+ src/buildtool/main/cli.cpp        | 15 +++++++++
+ src/buildtool/main/cli.hpp        |  4 ++-
+ src/buildtool/main/main.cpp       | 56 +++++++++++++++++++++++++++++--
+ src/other_tools/just_mr/utils.hpp | 11 +++++-
+ 7 files changed, 116 insertions(+), 10 deletions(-)
+
+diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
+index a4d74d56..d7bc8bd3 100644
+--- a/share/man/must-backend.5.md
++++ b/share/man/must-backend.5.md
+@@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
+ SYNOPSIS
+ ========
+ 
++**`must`** **`preprocess`** \[*`OPTION`*\]... *`FILE`*  
+ **`must`** {**`analyse`**|**`build`**} \[*`OPTION`*\]... \[\[*`module`*\] *`target`*\]  
+ **`must`** **`install`** \[*`OPTION`*\]... **`-o`** *`OUTPUT_DIR`* \[\[*`module`*\] *`target`*\]  
+ **`must`** **`install-cas`** \[*`OPTION`*\]... *`OBJECT_ID`*  
+@@ -103,6 +104,12 @@ the multi-repository configuration file.
+ SUBCOMMANDS
+ ===========
+ 
++**`preprocess`**
++---------------------------------------
++
++Preprocess a Jsonnet file. It outputs a string on stdout in JSON syntax that
++might contain Justbuild expressions.
++
+ **`analyse`**|**`build`**|**`install`**
+ ---------------------------------------
+ 
+@@ -414,29 +421,29 @@ Path to local log file. **`must`** will store the information printed on
+ stderr in the log file along with the thread id and timestamp when the
+ output has been generated.  
+ Supported by:
+-add-to-cas|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
++add-to-cas|preprocess|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
+ 
+ **`--log-limit`** *`NUM`*  
+ Log limit (higher is more verbose) in interval \[0,6\] (Default: 3).  
+ Supported by:
+-add-to-cas|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
++add-to-cas|preprocess|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
+ 
+ **`--restrict-stderr-log-limit`** *`NUM`*  
+ Restrict logging on console to the minimum of the specified **`--log-limit`**
+ and the value specified in this option. The default is to not additionally
+ restrict the log level at the console.  
+ Supported by:
+-add-to-cas|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
++add-to-cas|preprocess|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
+ 
+ **`--plain-log`**  
+ Do not use ANSI escape sequences to highlight messages.  
+ Supported by:
+-add-to-cas|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
++add-to-cas|preprocess|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
+ 
+ **`--log-append`**  
+ Append messages to log file instead of overwriting existing.  
+ Supported by:
+-add-to-cas|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
++add-to-cas|preprocess|analyse|build|describe|install|install-cas|rebuild|traverse|gc|execute.
+ 
+ **`--expression-log-limit`** *`NUM`*  
+ In error messages, truncate the entries in the enumeration of the active
+@@ -506,6 +513,11 @@ Ensure that all installed artifacts are available in local CAS as well,
+ even when using remote execution.  
+ Supported by: install|traverse|install-cas.
+ 
++**`--root`** *`PATH`*  
++The file root used for resolving files to preprocess. Default: first parent of
++`FILE` that contains a workspace root marker or cwd if reading from stdin.  
++Supported by: preprocess.
++
+ Parallelism options
+ -------------------
+ 
+diff --git a/share/man/must.1.md b/share/man/must.1.md
+index e349c0da..7c0c0f76 100644
+--- a/share/man/must.1.md
++++ b/share/man/must.1.md
+@@ -12,7 +12,7 @@ SYNOPSIS
+ **`must`** \[*`OPTION`*\]... {**`setup`**|**`setup-env`**} \[**`--all`**\] \[*`main-repo`*\]  
+ **`must`** \[*`OPTION`*\]... **`fetch`** \[**`--all`**\] \[**`--backup-to-remote`**] \[**`-o`** *`fetch-dir`*\] \[*`main-repo`*\]  
+ **`must`** \[*`OPTION`*\]... **`update`** \[*`repo`*\]...  
+-**`must`** \[*`OPTION`*\]... {**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`add-to-cas`**|**`rebuild`**|**`gc`**|**`traverse`**} \[*`SUBCMD_ARG`*\]...  
++**`must`** \[*`OPTION`*\]... {**`preprocess`**|**`describe`**|**`analyse`**|**`build`**|**`install`**|**`install-cas`**|**`add-to-cas`**|**`rebuild`**|**`gc`**|**`traverse`**} \[*`SUBCMD_ARG`*\]...  
+ 
+ DESCRIPTION
+ ===========
+diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
+index e7ff4914..08aa73e7 100644
+--- a/src/buildtool/common/cli.hpp
++++ b/src/buildtool/common/cli.hpp
+@@ -196,6 +196,11 @@ struct ToAddArguments {
+     bool follow_symlinks{};
+ };
+ 
++struct PreprocessArguments {
++    std::filesystem::path path{};
++    std::optional<std::filesystem::path> root{};
++};
++
+ static inline auto SetupCommonArguments(
+     gsl::not_null<CLI::App*> const& app,
+     gsl::not_null<CommonArguments*> const& clargs) {
+@@ -771,6 +776,17 @@ static inline auto SetupServeArguments(
+         ->required();
+ }
+ 
++static inline auto SetupPreprocessArguments(
++    gsl::not_null<CLI::App*> const& app,
++    gsl::not_null<PreprocessArguments*> const& clargs) {
++    app->add_option("file", clargs->path, "File path (use - for stdin)")
++        ->required();
++    app->add_option(
++        "--root",
++        clargs->root,
++        "File root (Default: workspace root of file or cwd if stdin)");
++}
++
+ static inline void SetupRetryArguments(
+     gsl::not_null<CLI::App*> const& app,
+     gsl::not_null<RetryArguments*> const& args) {
+diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
+index 1bade4dd..f1e1e8b0 100644
+--- a/src/buildtool/main/cli.cpp
++++ b/src/buildtool/main/cli.cpp
+@@ -167,6 +167,15 @@ auto SetupServeServiceCommandArguments(
+     SetupServeArguments(app, &clargs->serve);
+ }
+ 
++/// \brief Setup arguments for sub command "just preprocess".
++auto SetupPreProcessCommandArguments(
++    gsl::not_null<CLI::App*> const& app,
++    gsl::not_null<CommandLineArguments*> const& clargs) {
++    // all other arguments will be read from config file
++    SetupLogArguments(app, &clargs->log);
++    SetupPreprocessArguments(app, &clargs->preprocess);
++}
++
+ }  // namespace
+ 
+ void CreateJustSubcommands(CLI::App& app) {
+@@ -191,6 +200,8 @@ void CreateJustSubcommands(CLI::App& app) {
+         "execute", "Start single node execution service on this machine.");
+     auto* cmd_serve =
+         app.add_subcommand("serve", "Provide target dependencies for a build.");
++    auto* cmd_preprocess =
++        app.add_subcommand("preprocess", "Preprocess Jsonnet file.");
+     auto* cmd_traverse =
+         app.group("")  // group for creating hidden options
+             ->add_subcommand("traverse",
+@@ -244,6 +255,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+     SetupGcCommandArguments(cmd_gc, &clargs);
+     SetupExecutionServiceCommandArguments(cmd_execution, &clargs);
+     SetupServeServiceCommandArguments(cmd_serve, &clargs);
++    SetupPreProcessCommandArguments(cmd_preprocess, &clargs);
+     try {
+         app.parse(argc, argv);
+     } catch (CLI::Error& e) {
+@@ -289,6 +301,9 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+     else if (*cmd_serve) {
+         clargs.cmd = SubCommand::kServe;
+     }
++    else if (*cmd_preprocess) {
++        clargs.cmd = SubCommand::kPreProcess;
++    }
+ 
+     return clargs;
+ }
+diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
+index 5b287fa1..ea71dca9 100644
+--- a/src/buildtool/main/cli.hpp
++++ b/src/buildtool/main/cli.hpp
+@@ -34,7 +34,8 @@ enum class SubCommand {
+     kTraverse,
+     kGc,
+     kExecute,
+-    kServe
++    kServe,
++    kPreProcess
+ };
+ 
+ struct CommandLineArguments {
+@@ -56,6 +57,7 @@ struct CommandLineArguments {
+     ServerAuthArguments sauth;
+     ServiceArguments service;
+     ServeArguments serve;
++    PreprocessArguments preprocess;
+     RetryArguments retry;
+     GcArguments gc;
+     ToAddArguments to_add;
+diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
+index abacfe77..cda44536 100644
+--- a/src/buildtool/main/main.cpp
++++ b/src/buildtool/main/main.cpp
+@@ -557,11 +557,12 @@ void SetupRetryConfig(RetryArguments const& args) {
+         .config = std::move(config)};
+ }
+ 
+-[[nodiscard]] auto DetermineWorkspaceRootByLookingForMarkers() noexcept
++[[nodiscard]] auto DetermineWorkspaceRootByLookingForMarkers(
++    std::optional<std::filesystem::path> const& base = std::nullopt) noexcept
+     -> std::filesystem::path {
+     std::filesystem::path cwd{};
+     try {
+-        cwd = std::filesystem::current_path();
++        cwd = base.value_or(std::filesystem::current_path());
+     } catch (std::exception const& e) {
+         Logger::Log(LogLevel::Warning,
+                     "Failed to determine current working directory ({})",
+@@ -899,6 +900,57 @@ auto main(int argc, char* argv[]) -> int {
+             return kExitSuccess;
+         }
+ 
++        if (arguments.cmd == SubCommand::kPreProcess) {
++            auto path = arguments.preprocess.path;
++            auto root = arguments.preprocess.root;
++            std::optional<std::string> content{};
++
++            if (path == "-") {
++                path = "<stdin>";
++                if (not root) {
++                    root = std::filesystem::current_path();
++                }
++                content = "";
++                while (std::cin) {
++                    std::string line;
++                    std::getline(std::cin, line);
++                    content = fmt::format("{}{}\n", *content, line);
++                }
++            }
++            else if (not root) {
++                path = std::filesystem::absolute(path);
++                root = DetermineWorkspaceRootByLookingForMarkers(
++                    path.parent_path());
++                Logger::Log(
++                    LogLevel::Info, "Using preprocess root {}", root->string());
++                path = std::filesystem::proximate(path, *root);
++            }
++
++            FileRoot file_root{*root};
++            if (not content) {
++                content = file_root.ReadContent(path);
++                if (not content) {
++                    Logger::Log(
++                        LogLevel::Error, "Failed to read {}.", path.string());
++                    return kExitFailure;
++                }
++            }
++
++            if (auto output = file_root.ReadJSON(*content, path)) {
++                std::cout << IndentListsOnlyUntilDepth(
++                                 nlohmann::json::parse(*output), 2, 1)
++                          << std::endl;
++                return kExitSuccess;
++            }
++
++            Logger::Log(LogLevel::Error,
++                        "Failed to preprocess {} in root {}.",
++                        path.string(),
++                        root->string());
++
++            return kExitFailure;
++        }
++
+         // If no execution endpoint was given, the client should default to the
+         // serve endpoint, if given
+         if (not RemoteExecutionConfig::RemoteAddress() and
+diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
+index d4675821..0f294f58 100644
+--- a/src/other_tools/just_mr/utils.hpp
++++ b/src/other_tools/just_mr/utils.hpp
+@@ -150,7 +150,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+       .remote = true,
+       .remote_props = true,
+       .serve = false,
+-      .dispatch = true}}};
++      .dispatch = true}},
++    {"preprocess",
++     {.config = false,
++      .build_root = false,
++      .launch = false,
++      .defines = false,
++      .remote = false,
++      .remote_props = false,
++      .serve = false,
++      .dispatch = false}}};
+ 
+ nlohmann::json const kDefaultConfigLocations = nlohmann::json::array(
+     {{{"root", "workspace"}, {"path", "repos.json"}},
+-- 

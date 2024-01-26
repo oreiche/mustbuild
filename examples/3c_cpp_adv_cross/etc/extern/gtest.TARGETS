@@ -1,0 +1,48 @@
+// Common CMake defines for building gtest
+local _gtest_defines(dbg_var) = [
+  'BUILD_GMOCK=OFF',
+  'gtest_force_shared_crt=OFF',
+  join(['CMAKE_BUILD_TYPE=', select(var(dbg_var), 'Debug', 'Release')]),
+];
+
+
+// Target definitions
+{
+  // Foreign target "gtest"
+  gtest: {
+    // Use rule ["CC/foreign/cmake", "library"] from binding "rules"
+    type: ref_ext('rules', 'CC/foreign/cmake', 'library'),
+    // We want to read variable 'DEBUG'.
+    arguments_config: ['DEBUG'],
+    // Library name
+    name: 'gtest',
+    // Project directory (includes CMakeLists.txt)
+    project: [tree('.')],
+    // CMake defines (-Dxxx)
+    defines: _gtest_defines('DEBUG'),
+    // Produced header directories
+    out_hdr_dirs: ['gtest'],
+    // Produced library files
+    out_libs: ['libgtest.a'],
+    // Read produced pkg-config files to infer public cflags
+    'pkg-config': ['gtest.pc'],
+  },
+
+  // Foreign target "gtest_main"
+  gtest_main: {
+    // Use rule ["CC/foreign/cmake", "library"] from binding "rules"
+    type: ref_ext('rules', 'CC/foreign/cmake', 'library'),
+    // We want to read variable 'DEBUG'.
+    arguments_config: ['DEBUG'],
+    // Library name
+    name: 'gtest_main',
+    // Project directory (includes CMakeLists.txt)
+    project: [tree('.')],
+    // CMake defines (-Dxxx)
+    defines: _gtest_defines('DEBUG'),
+    // Produced library files
+    out_libs: ['libgtest_main.a'],
+    // Dependencies
+    deps: ['gtest'],
+  },
+}

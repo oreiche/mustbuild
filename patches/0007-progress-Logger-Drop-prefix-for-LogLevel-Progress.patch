@@ -1,0 +1,84 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 18 Feb 2024 18:28:47 +0100
+Subject: [progress] Logger: Drop prefix for LogLevel::Progress
+
+---
+ src/buildtool/logging/log_level.hpp        |  2 +-
+ src/buildtool/logging/log_sink_cmdline.hpp | 11 ++++++++---
+ src/buildtool/logging/log_sink_file.hpp    | 11 ++++++++---
+ 3 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/src/buildtool/logging/log_level.hpp b/src/buildtool/logging/log_level.hpp
+index 65b7b7c2..6323bde5 100644
+--- a/src/buildtool/logging/log_level.hpp
++++ b/src/buildtool/logging/log_level.hpp
+@@ -68,7 +68,7 @@ constexpr auto kLastLogLevel = LogLevel::Trace;
+         case LogLevel::Info:
+             return "INFO";
+         case LogLevel::Progress:
+-            return "PROG";
++            return "";
+         case LogLevel::Performance:
+             return "PERF";
+         case LogLevel::Debug:
+diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/log_sink_cmdline.hpp
+index 4219f95c..5c2e07e1 100644
+--- a/src/buildtool/logging/log_sink_cmdline.hpp
++++ b/src/buildtool/logging/log_sink_cmdline.hpp
+@@ -68,9 +68,14 @@ class LogSinkCmdLine final : public ILogSink {
+ 
+         if (logger != nullptr) {
+             // append logger name
+-            prefix = fmt::format("{} ({})", prefix, logger->Name());
++            if (prefix.empty()) {
++                prefix = fmt::format("{} ", prefix);
++            }
++            prefix = fmt::format("{}({})", prefix, logger->Name());
++        }
++        if (not prefix.empty()) {
++            prefix = fmt::format("{}: ", prefix);
+         }
+-        prefix = prefix + ":";
+         auto cont_prefix = std::string(prefix.size(), ' ');
+         prefix = FormatPrefix(level, prefix);
+         bool msg_on_continuation{false};
+@@ -103,7 +108,7 @@ class LogSinkCmdLine final : public ILogSink {
+             using it = std::istream_iterator<ILogSink::Line>;
+             std::istringstream iss{msg};
+             for_each(it{iss}, it{}, [&](auto const& line) {
+-                fmt::print(stderr, "{} {}\n", prefix, line);
++                fmt::print(stderr, "{}{}\n", prefix, line);
+                 prefix = cont_prefix;
+             });
+             std::fflush(stderr);
+diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log_sink_file.hpp
+index 20313463..c0a2bc81 100644
+--- a/src/buildtool/logging/log_sink_file.hpp
++++ b/src/buildtool/logging/log_sink_file.hpp
+@@ -120,9 +120,14 @@ class LogSinkFile final : public ILogSink {
+ 
+         if (logger != nullptr) {
+             // append logger name
+-            prefix = fmt::format("{} ({})", prefix, logger->Name());
++            if (not prefix.empty()) {
++                prefix = fmt::format("{} ", prefix);
++            }
++            prefix = fmt::format("{}({})", prefix, logger->Name());
++        }
++        if (not prefix.empty()) {
++            prefix = fmt::format("{}: ", prefix);
+         }
+-        prefix = fmt::format("{}:", prefix);
+         const auto* cont_prefix = "  ";
+ 
+         {
+@@ -131,7 +136,7 @@ class LogSinkFile final : public ILogSink {
+                 using it = std::istream_iterator<ILogSink::Line>;
+                 std::istringstream iss{msg};
+                 for_each(it{iss}, it{}, [&](auto const& line) {
+-                    fmt::print(file, "{} {}\n", prefix, line);
++                    fmt::print(file, "{}{}\n", prefix, line);
+                     prefix = cont_prefix;
+                 });
+                 std::fclose(file);
+-- 

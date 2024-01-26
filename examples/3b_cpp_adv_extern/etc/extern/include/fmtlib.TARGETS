@@ -1,0 +1,10 @@
+// Target definitions
+{
+  // Target "public_headers" (basically a file group)
+  public_headers: {
+    // Use built-in rule "install" (collecting/grouping files and directories)
+    type: 'install',
+    // Collect the entire directory "fmt"
+    deps: [tree('fmt')],
+  },
+}

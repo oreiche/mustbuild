@@ -1,0 +1,1309 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sat, 23 Dec 2023 15:04:32 +0100
+Subject: [preprocess] Read JSON files through Jsonnet compiler
+
+---
+ .../build_engine/base_maps/json_file_map.hpp  |    2 +-
+ src/buildtool/file_system/TARGETS             |    3 +-
+ src/buildtool/main/main.cpp                   |    2 +-
+ src/jsonnet/TARGETS                           |   23 +
+ src/jsonnet/builtins.libsonnet                | 1219 +++++++++++++++++
+ 5 files changed, 1246 insertions(+), 3 deletions(-)
+ create mode 100644 src/jsonnet/TARGETS
+ create mode 100644 src/jsonnet/builtins.libsonnet
+
+diff --git a/src/buildtool/build_engine/base_maps/json_file_map.hpp b/src/buildtool/build_engine/base_maps/json_file_map.hpp
+index 4e1ebf70..82fb72ff 100644
+--- a/src/buildtool/build_engine/base_maps/json_file_map.hpp
++++ b/src/buildtool/build_engine/base_maps/json_file_map.hpp
+@@ -94,7 +94,7 @@ auto CreateJsonFileMap(gsl::not_null<RepositoryConfig*> const& repo_config,
+             return;
+         }
+ 
+-        auto const file_content = root->ReadContent(json_file_path);
++        auto file_content = root->ReadJSON(json_file_path);
+         if (not file_content) {
+             (*logger)(fmt::format("cannot read JSON file {}.",
+                                   json_file_path.string()),
+diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
+index 6cad73eb..50a6aa6a 100644
+--- a/src/buildtool/file_system/TARGETS
++++ b/src/buildtool/file_system/TARGETS
+@@ -146,7 +146,8 @@
+ , "file_root":
+   { "type": ["@", "rules", "CC", "library"]
+   , "name": ["file_root"]
+-  , "hdrs": ["file_root.hpp", ["src/jsonnet", "builtins.h"]]
++  , "hdrs": ["file_root.hpp"]
++  , "private-hdrs": [["src/jsonnet", "builtins.h"]]
+   , "srcs": ["file_root.cpp"]
+   , "deps":
+     [ "git_tree"
+diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
+index f01c7815..abacfe77 100644
+--- a/src/buildtool/main/main.cpp
++++ b/src/buildtool/main/main.cpp
+@@ -524,7 +524,7 @@ void SetupRetryConfig(RetryArguments const& args) {
+         Logger::Log(LogLevel::Error, "Expected file at {}.", target_file);
+         std::exit(kExitFailure);
+     }
+-    auto file_content = target_root->ReadContent(target_file);
++    auto file_content = target_root->ReadJSON(target_file);
+     if (not file_content) {
+         Logger::Log(LogLevel::Error, "Cannot read file {}.", target_file);
+         std::exit(kExitFailure);
+diff --git a/src/jsonnet/TARGETS b/src/jsonnet/TARGETS
+new file mode 100644
+index 00000000..19df5dee
+--- /dev/null
++++ b/src/jsonnet/TARGETS
+@@ -0,0 +1,23 @@
++{ "builtins.blob":
++  { "type": "generic"
++  , "deps": ["builtins.libsonnet"]
++  , "cmds":
++    [ "cp builtins.libsonnet x"
++    , "sed -i 's|//.*||g' x"
++    , "sed -i 's/^\\s*//g' x"
++    , "sed -i '/^\\s*$/d' x"
++    , "sed -i 's/\\\\/\\\\\\\\/g' x"
++    , "sed -i 's/\"/\\\\\"/g' x"
++    , "cat x | tr '\\n' ' ' > builtins.blob"
++    ]
++  , "outs": ["builtins.blob"]
++  }
++, "builtins.h":
++  { "type": "generic"
++  , "deps": ["builtins.blob"]
++  , "cmds":
++    [ "printf 'static auto constexpr kBuiltins = \"%s\";' \"$(cat builtins.blob)\" > builtins.h"
++    ]
++  , "outs": ["builtins.h"]
++  }
++}
+diff --git a/src/jsonnet/builtins.libsonnet b/src/jsonnet/builtins.libsonnet
+new file mode 100644
+index 00000000..05694694
+--- /dev/null
++++ b/src/jsonnet/builtins.libsonnet
+@@ -0,0 +1,1219 @@
++/// # Mustbuild Language Extensions
++///
++/// The language extensions use the [Mustbuild preprocessor](./preprocessor.md)
++/// to generate JSON code that serves as a intermediate representation. This
++/// intermediate representation is used by the Mustbuild backend and is also
++/// identical to the [Justbuild expression
++/// language](https://github.com/just-buildsystem/justbuild/blob/master/doc/concepts/expressions.md).
++///
++/// There are two important particularities inherited from Justbuild:
++///
++/// 1. Literal maps `{}` are considered to be Justbuild expressions and
++///    therefore are not supported (unless explicitly stated otherwise). To
++///    create a map, please see the [`map()`](#map) utility function.
++/// 2. Every expression can be interpreted as a boolean for conditions. In that
++///    case, they are considered to be `true` if they do *not* evaluate to
++///    `null`, `false`, `0`, `''`, `[]`, or `{}`.
++///
++
++/// ## Expressions
++///
++/// Every Mustbuild expression is implemented as a disjoint mapping to one or
++/// more corresponding Justbuild expressions.
++///
++
++// helper functions
++local internal = {
++  unary(name, arg1):: {type: name, '$1': arg1},
++  binary(name, arg1, arg2):: {type: name, '$1': arg1, '$2': arg2},
++};
++
++/// ---
++///
++/// ### `var`
++///
++/// Access value of variable.
++///
++/// `var`(`name`: *str*, `default`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `name`    | Name of the variable to read | None |
++/// | `default` | (optional) Expression to use if variable is not set | `null` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to value of variable 'a' or null if not set
++/// var('a')
++/// // evaluates to "foo" if variable 'a' is not set
++/// var('a', default='foo')
++/// ```
++///
++local var(name, default=null) = {
++  assert std.isString(name) : 'var() expects string literal argument for name',
++  type: 'var',
++  name: name,
++} + if default == null then {} else { default: default };
++
++/// ---
++///
++/// ### `let`
++///
++/// Sequentially set variables for use in specified expression.
++///
++/// `let`(`bindings`: *list[pair]*, `body`: *expr*) -> *expr*
++///
++/// Each *pair* is of the form [`var`: *str-expr*, `val`: *expr*].
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `bindings` | List of var-val pairs overlaying the environment | None |
++/// | `body`     | Expression to evaluate in overlayed environment | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "foobar"
++/// let([ set('a', 'foo'),
++///       set('b', 'bar')
++///     ],
++///     join([var('a'), var('b')]))
++/// ```
++///
++/// > See also [`set()`](#set) and [`join()`](#join).
++///
++local let(bindings, body) = {
++  assert std.isArray(bindings) : 'let() expects list argument for bindings',
++  local assert_bindings = [
++    if std.isArray(b) then
++      if std.length(b) == 2 then
++        if std.isString(b[0]) then b
++        else error 'let() expects first pair element to be string literal'
++      else error 'let() expects pairs of length 2'
++    else error 'let() expects literal pairs in bindings list'
++    for b in bindings
++  ],
++  type: 'let*',
++  bindings: bindings,
++  body: body,
++};
++
++/// ---
++///
++/// ### `select`
++///
++/// Select expression depending on condition.
++///
++/// `select`(`cond`: *expr*, `pass`: *expr*, `fail`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `cond` | Expression for condition | None |
++/// | `pass` | Expression to evaluate if `cond` succeeds | None |
++/// | `fail` | (optional) Expression to evaluate if `cond` fails | `[]` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "pass" or "fail" (depending on variable 'a')
++/// select(var('a'), 'pass', 'fail')
++/// // evaluates to []
++/// select(false, 'pass')
++/// ```
++///
++local select(cond, pass, fail=[]) = {
++  type: 'if',
++  cond: cond,
++  'then': pass,
++  'else': fail,
++};
++
++/// ---
++///
++/// ### `cond`
++///
++/// Sequentially evaluate conditions and select expression of the first
++/// successful condition.
++///
++/// `cond`(`cond`: *list[pair]*, `default`: *expr*) -> *expr*
++///
++/// Each *pair* is of the form [`cond`: *expr*, `value`: *expr*], with
++/// `cond` being interpreted as a boolean.
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `cond`    | List of cond-value pairs | None |
++/// | `default` | (optional) Expression to evaluate if no condition succeeds | `[]` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "pass" (value of first successful condition)
++/// cond([ [null, 'fail'],
++///        [true, 'pass'],
++///        [var('a'), 'unknown'],
++///      ],
++///      default='fallback')
++/// ```
++///
++local cond(cond, default=[]) = {
++  assert std.isArray(cond) : 'cond() expects list argument for cond',
++  local assert_cond = [
++    if std.isArray(c) then
++      if std.length(c) == 2 then c
++      else error 'cond() expects pairs of length 2'
++    else error 'cond() expects literal pairs in cond list'
++    for c in cond
++  ],
++  type: 'cond',
++  cond: cond,
++} + if default == [] then {} else { default: default };
++
++/// ---
++///
++/// ### `case`
++///
++/// Select expression from caes.
++///
++/// `case`(`expr`: *expr*, `case`: *map | list[pair]*, `default`: *expr*) -> *expr*
++///
++/// If cases are specified as a literal map, only string cases can be matched.
++/// If cases are specified as list of pairs, arbitrary expressions can be
++/// matched as cases sequentially. Each *pair* is of the form [`comp`: *expr*,
++/// `value`: *expr*].
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `expr`    | Expression to evaluate for comparison | None |
++/// | `case`    | Map for string comparison or pairs for arbitrary comparison | None |
++/// | `default` | (optional) Expression to evaluate if no comparision succeeds | `[]` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "pass" or "fail" (depending on variable 'a')
++/// case(select(var('a'), 'yes', 'no'),
++///      { yes: 'pass',
++///        no: 'fail',
++///        maybe: 'unknown',
++///      },
++///      default='fallback')
++/// // evaluates to "pass" or "fail" (depending on variable 'a')
++/// case(select(var('a'), true, null),
++///      [ [true, 'pass'],
++///        [null, 'fail'],
++///        ['maybe', 'unknown'],
++///      ],
++///      default='fallback')
++/// ```
++///
++local case(expr, case, default=[]) = {
++  assert std.isArray(case) || std.isObject(case)
++         : 'case() expects list or map argument for case',
++  local assert_case =
++    if std.isArray(case) then
++      [ if std.isArray(c) then
++          if std.length(c) == 2 then c
++          else error 'case() expects pairs of length 2'
++        else error 'case() expects literal pairs in case list'
++        for c in cond
++      ]
++    else case,
++  type: if std.isArray(case) then 'case*' else 'case',
++  expr: expr,
++  case: case,
++} + if default == [] then {} else { default: default };
++
++/// ---
++///
++/// ### `and`
++///
++/// Logical AND.
++///
++/// `and`(`conds`: *list-expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `conds` | List of expressions or expression evaluating to list | None |
++///
++/// > Note that literal lists are subject to short-circuit evaluation.
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true or false (depending on varable 'a')
++/// and([true, var('a')])
++/// ```
++///
++local and(conds) = {
++  assert std.isArray(conds) || std.isObject(conds)
++         : 'and() expects list of expressions or list-expression',
++  type: 'and',
++  '$1': conds,
++};
++
++/// ---
++///
++/// ### `or`
++///
++/// Logical OR.
++///
++/// `or`(`conds`: *list-expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `conds` | List of expressions or expression evaluating to list | None |
++///
++/// > Note that literal lists are subject to short-circuit evaluation.
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true or false (depending on varable 'a')
++/// or([false, var('a')])
++/// ```
++///
++local or(conds) = {
++  assert std.isArray(conds) || std.isObject(conds)
++         : 'or() expects list of expressions or list-expression',
++  type: 'or',
++  '$1': conds,
++};
++
++/// ---
++///
++/// ### `foreach`
++///
++/// Evaluate expression for each element in list.
++///
++/// `foreach`(`var`: *str*, `range`: *list-expr*, `body`: *expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `var`   | Literal string used as iteration variable name | None |
++/// | `range` | Expression evaluating to list | None |
++/// | `body`  | Expression to evaluate in each iteration | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["food","foot"]
++/// foreach('x', ['d', 't'], join(['foo', var('x')]))
++/// ```
++///
++/// > See also [`join()`](#join).
++///
++local foreach(var, range, body) = {
++  assert std.isString(var) : 'foreach() expects literal string for var',
++  type: 'foreach',
++  range: range,
++  var: var,
++  body: body,
++};
++
++/// ---
++///
++/// ### `foreach_map`
++///
++/// Evaluate expression for each field in map.
++///
++/// `foreach_map`(`var`: *str*, `var_val`: *str*, `range`: *map-expr*, `body`: *expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `var`     | Literal string used as iteration variable name for keys | None |
++/// | `var_val` | Literal string used as iteration variable name for values | None |
++/// | `range`   | Expression evaluating to map | None |
++/// | `body`    | Expression to evaluate in each iteration | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["a:x","b:y"]
++/// foreach_map('k', 'v', map({'a':'x','b':'y'})],
++///             join([var('k'), ':', var('v')]))
++/// ```
++///
++/// > See also [`map()`](#map) and [`join()`](#join).
++///
++local foreach_map(var, var_val, range, body) = {
++  assert std.isString(var) : 'foreach() expects literal string for var',
++  assert std.isString(var_val) : 'foreach() expects literal string for var_val',
++  type: 'foreach',
++  range: range,
++  var_key: var,
++  var_val: var_val,
++  body: body,
++};
++
++/// ---
++///
++/// ### `foldl`
++///
++/// Sequentially evaluate expression for each element in list. The result of
++/// each evaluation is assigned to an accumulation variable.
++///
++/// `foldl`(`var`: *str*, `var_acc`: *str*, `range`: *list-expr*, `start`: *expr*, `body`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `var`     | Literal string used as iteration variable name | None |
++/// | `var_acc` | Literal string used as accumulation variable name | None |
++/// | `range`   | Expression evaluating to list | None |
++/// | `start`   | Expression to evaluate the accumulation start value | None |
++/// | `body`    | Expression to evaluate the next accumulation value | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "foobarbaz"
++/// foldl('x', 'acc', ['bar', 'baz'],
++///       start='foo',
++///       body=join([var('acc'), var('x')]))
++/// ```
++///
++/// > See also [`join()`](#join).
++///
++local foldl(var, var_acc, range, start, body) = {
++  assert std.isString(var) : 'foldl() expects literal string for var',
++  assert std.isString(var_acc) : 'foldl() expects literal string for var_acc',
++  type: 'foldl',
++  range: range,
++  var: var,
++  accum_var: var_acc,
++  start: start,
++  body: body,
++};
++
++/// ---
++///
++/// ### `nub_right`
++///
++/// Remove duplicates from list and retain only the right-most one.
++///
++/// `nub_right`(`list`: *list-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `list` | List-expression to remove left-most duplicates from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["foo","baz","bar"]
++/// nub_right(['foo', 'bar', 'baz', 'bar', 'bar'])
++/// ```
++///
++local nub_right(list) = internal.unary('nub_right', list);
++
++/// ---
++///
++/// ### `basename`
++///
++/// Get basename from string.
++///
++/// `basename`(`path`: *str-expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `path` | String-expression to extract file name from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "bar.baz"
++/// basename('foo/bar.baz')
++/// ```
++///
++local basename(path) = internal.unary('basename', path);
++
++/// ---
++///
++/// ### `keys`
++///
++/// Get keys from map as list.
++///
++/// `keys`(`map`: *map-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `map` | Map-expression to read keys from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["a","b"]
++/// keys(map({a:'x',b:'y'}))
++/// ```
++///
++/// > See also [`map()`](#map).
++///
++local keys(map) = internal.unary('keys', map);
++
++/// ---
++///
++/// ### `values`
++///
++/// Get values from map as list.
++///
++/// `values`(`map`: *map-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `map` | Map-expression to read values from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["x","y"]
++/// keys(map({a:'x',b:'y'}))
++/// ```
++///
++/// > See also [`map()`](#map).
++///
++local values(map) = internal.unary('values', map);
++
++/// ---
++///
++/// ### `range`
++///
++/// Generate range from length as number or string. String must be the decimal
++/// representation of an integer.
++///
++/// `range`(`num`: *number | str-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `num` | Number or string-expression to generate the range list from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["0","1","2"]
++/// range(3.0)
++/// // evaluates to ["0","1","2"]
++/// range("3")
++/// ```
++///
++local range(num) = internal.unary('range', num);
++
++/// ---
++///
++/// ### `map_env`
++///
++/// Generate map from variables.
++///
++/// `map_env`(`vars`: *list[str]*) -> *map-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `vars` | List of environment variable names to create a map from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"a":"x","b":"y"}
++/// let([ set('a', 'x'),
++///       set('b', 'y')
++///     ],
++///     map_env(['a', 'b']))
++/// ```
++///
++/// > See also [`let()`](#let).
++///
++local map_env(vars) = {
++  assert std.isArray(vars) : 'env() expects list argument for vars',
++  local assert_vars = [
++    if std.isString(v) then v
++    else error 'env() expects sting literals in vars'
++    for v in vars
++  ],
++  type: 'env',
++  vars: vars,
++};
++
++/// ---
++///
++/// ### `map_enum`
++///
++/// Generate map with values from list. All keys are the decimal representation
++/// of the position in the list, padded with leading zeros to length 10.
++///
++/// `map_enum`(`list`: *list-expr*) -> *map-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|
++/// | `list` | List-expression to generate the map from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"0000000000":"a","0000000001":"b"}
++/// map_enum(['a', 'b'])
++/// ```
++///
++local map_enum(list) = internal.unary('enumerate', list);
++
++/// ---
++///
++/// ### `map_set`
++///
++/// Generate map with keys from list. All values are set to `true`.
++///
++/// `map_set`(`keys`: *list-expr*) -> *map-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `keys` | List-expression with key names to generate the map from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"a":true,"b":true}
++/// map_set(['a', 'b'])
++/// ```
++///
++local map_set(keys) = internal.unary('set', keys);
++
++/// ---
++///
++/// ### `reverse`
++///
++/// Reverse list.
++///
++/// `reverse`(`list`: *list-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `list` | List-expression to reverse | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["c","b","a"]
++/// reverse(['a', 'b', 'c'])
++/// ```
++///
++local reverse(list) = internal.unary('reverse', list);
++
++/// ---
++///
++/// ### `flatten`
++///
++/// Concatenate lists.
++///
++/// `flatten`(`lists`: *list-expr*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `lists` | List-expression containing the lists to concatenate | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ["a","b","c","d"]
++/// flatten([ ['a', 'b'], ['c', 'd'] ])
++/// ```
++///
++local flatten(lists) = internal.unary('++', lists);
++
++/// ---
++///
++/// ### `map_union`
++///
++/// Combine maps with the union of their fields.
++///
++/// `map_union`(`maps`: *list-expr*, `disjoint`: *bool*) -> *list-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `lists`    | List-expression containing the maps to unify | None |
++/// | `disjoint` | (optional) Bool indicating that maps should be disjoint | `false` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"a":"x","b":"y"}
++/// map_union([ map({a:'x'}), map({b:'y'} ])
++/// // evaluation fails
++/// map_union([ map({a:'x'}), map({a:'y'} ], disjoint=true)
++/// ```
++///
++/// > See also [`map()`](#map).
++///
++local map_union(maps, disjoint=false) =
++  if !std.isBoolean(disjoint) then
++    error 'map_union() expects bool for disjoint'
++  else
++    internal.unary(
++      if disjoint then 'disjoint_map_union' else 'map_union', maps);
++
++/// ---
++///
++/// ### `join_cmd`
++///
++/// Join strings with shell quoting (POSIX shell can decode original list).
++///
++/// `join_cmd`(`args`: *list-expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `args` | List-expression containing the command arguments to join | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "'echo' 'foo' ''\''bar'\'' baz'"
++/// join_cmd(['echo' 'foo', "'bar' baz"])
++/// ```
++///
++local join_cmd(args) = internal.unary('join_cmd', args);
++
++/// ---
++///
++/// ### `json_encode`
++///
++/// Serialize JSON to string.
++///
++/// `json_encode`(`data`: *expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `data` | Expression containing the command arguments to join | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "[\"foo\",\"bar\"]"
++/// json_encode(['foo','bar'])
++/// ```
++///
++local json_encode(data) = internal.unary('json_encode', data);
++
++/// ---
++///
++/// ### `change_ending`
++///
++/// Change extension of a filename component.
++///
++/// `change_ending`(`path`: *str-expr*, `ending`: *str-expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `path`   | String-expression of which to change the ending | None |
++/// | `ending` | String-expression specifying the new ending | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "src/main.o"
++/// change_ending('src/main.c', '.o')
++/// ```
++///
++local change_ending(path, ending) =
++  internal.unary('change_ending', path) + {ending: ending};
++
++/// ---
++///
++/// ### `join`
++///
++/// Join strings with optional separator.
++///
++/// `join`(`strings`: *list-expr*, `sep`: *str-expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `strings` | List-expression containing strings to concatenate | None |
++/// | `sep`     | (optional) String-expression used as concatenation separator | `''` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "foo,bar"
++/// join(['foo', 'bar'], ',')
++/// ```
++///
++local join(strings, sep='') =
++  internal.unary('join', strings) + {separator: sep};
++
++/// ---
++///
++/// ### `escape_chars`
++///
++/// Escape charaters from string.
++///
++/// `escape_chars`(`string`: *str-expr*, `chars`: *list-expr*, `escape`: *str-expr*) -> *str-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `string` | String-expression specifying the input string | None |
++/// | `chars`  | List-expression specifying the characters to escape | None |
++/// | `escape` | (optional) String-expression specifying the escape character | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to ",foo,bar"
++/// escape_chars('foobar', ['f', 'b'], ',')
++/// ```
++///
++local escape_chars(string, chars, escape='\\') =
++  internal.unary('escape_chars', string) + {chars: chars, escape_prefix: escape};
++
++/// ---
++///
++/// ### `to_subdir`
++///
++/// Interpret keys of map as paths and change their prefix.
++///
++/// `to_subdir`(`map`: *map-expr*, `subdir`: *str-expr*, `flat`: *expr*, `msg`: *expr*) -> *map-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `map`    | Map-expression containin the keys to modify | None |
++/// | `subdir` | String-expression specifying the path prefixed to keys | None |
++/// | `flat`   | (optional) Expression boolean foring replacement keys' dirname | `false` |
++/// | `msg`    | (optional) Expression stringified as error message on conflict | `null` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"sub/a/b":"xy"}
++/// to_subdir(map({'a/b':'xy'}), 'sub')
++/// // evaluates to {"sub/b":"xy"}
++/// to_subdir(map({'a/b':'xy'}), 'sub', flat=true, msg='conflict error')
++/// ```
++///
++/// > See also [`map()`](#map).
++///
++local to_subdir(map, subdir, flat=false, msg=null) =
++  internal.unary('to_subdir', map) + {subdir: subdir, flat: flat}
++    + if msg == null then {} else {msg: msg};
++
++/// ---
++///
++/// ### `eq`
++///
++/// Compare expressions for equality.
++///
++/// `eq`(`lhs`: *expr*, `rhs`: *expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `lhs` | Left-hand side expression of comparison | None |
++/// | `rhs` | Right-hand side expression of comparison | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true if variable 'a' is not set
++/// eq(var('a'), null)
++/// ```
++///
++local eq(lhs, rhs) = internal.binary('==', lhs, rhs);
++
++/// ---
++///
++/// ### `empty_map`
++///
++/// Generates an empty map. See also [`map()`](#map).
++///
++/// `empty_map`() -> *map-expr*
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {}
++/// empty_map()
++/// ```
++///
++local empty_map() = {type: 'empty_map'};
++
++/// ---
++///
++/// ### `singleton_map`
++///
++/// Generates a map from key and value. See also [`map()`](#map).
++///
++/// `singleton_map`(`key`: *str-expr*, `value`: *expr*) -> *map-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `key`   | String-expression used as key to create map from | None |
++/// | `value` | String-expression used as value to create map from | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {"foo":"bar"}
++/// singleton_map('foo', 'bar')
++/// ```
++///
++local singleton_map(key, value) = {
++  assert std.isObject(key) || std.isString(key)
++         : 'singleton_map() expects key to be expression or string literal',
++  type: 'singleton_map',
++  key: key,
++  value: value,
++};
++
++/// ---
++///
++/// ### `lookup`
++///
++/// Lookup value of key in map.
++///
++/// `lookup`(`key`: *str-expr*, `map`: *map-expr*, `default`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `key`     | String-expression used as key for lookup | None |
++/// | `map`     | Map-expression to lookup the value from at key | None |
++/// | `default` | (optional) Expression returend if key is not found | `null` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to "x"
++/// lookup('a', map({a:'x', b:'y'}))
++/// // evaluates to "z"
++/// lookup('c', map({a:'x', b:'y'}), default='z')
++/// ```
++///
++/// > See also [`map()`](#map).
++///
++local lookup(key, map, default=null) = {
++  assert std.isObject(key) || std.isString(key)
++         : 'lookup() expects key to be expression or string literal',
++  assert std.isObject(map) : 'lookup() expects map to be expression',
++  type: 'lookup',
++  key: key,
++  map: map,
++} + if default==null then {} else {default: default};
++
++/// ---
++///
++/// ### `fail`
++///
++/// Trigger evaluation failure with error message.
++///
++/// `fail`(`msg`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `msg` | Expression stringified as error message | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluation fails with specified 'error message'
++/// fail('error message')
++/// ```
++///
++local fail(msg) = {type: 'fail', msg: msg};
++
++/// ---
++///
++/// ### `context`
++///
++/// Provide error message in case the evaluation of any sub-expression fails.
++///
++/// `context`(`msg`: *expr*, `expr`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `msg`  | Expression stringified as error message | None |
++/// | `expr` | Expression to evaluate in context | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluation fails with specified 'error message'
++/// context('error message', fail('force failure'))
++/// ```
++///
++local context(msg, expr) = internal.unary('context', expr) + {msg: msg};
++
++/// ---
++///
++/// ### `assert_non_empty`
++///
++/// Trigger evaluation failure if expression evaluates to empty string, map, or
++/// list.
++///
++/// `assert_non_empty`(`msg`: *expr*, `arg`: *expr*) -> *expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `msg` | Expression stringified as error message | None |
++/// | `arg` | Expression that should evaluate to non-empty string, map, or list | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluation fails with specified 'error message'
++/// assert_non_empty('error message', '')
++/// ```
++///
++local assert_non_empty(msg, arg) =
++  internal.unary('assert_non_empty', arg) + {msg: msg};
++
++/// ## Utility functions
++///
++/// Additional functions that make the developer's life easier but do not have a
++/// direct counter-part in the Justbuild expression language.
++///
++
++/// ---
++///
++/// ### `not`
++///
++/// Negate boolean expression.
++///
++/// `not`(`cond`: *expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `cond` | Expression to negate its boolean value | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true
++/// not(null)
++/// ```
++///
++local not(cond) = select(cond, false, true);
++
++/// ---
++///
++/// ### `neq`
++///
++/// Negated [`eq()`](#eq) expression.
++///
++/// `neq`(`lhs`: *expr*, `rhs`: *expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `lhs` | Left-hand side expression of comparison | None |
++/// | `rhs` | Right-hand side expression of comparison | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true if variable 'a' is set
++/// neq(var('a'), null)
++/// ```
++///
++local neq(lhs, rhs) = not(eq(lhs, rhs));
++
++/// ---
++///
++/// ### `nand`
++///
++/// Negated [`and()`](#and) expression.
++///
++/// `nand`(`conds`: *list[expr] | expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `conds` | List of expressions or expression evaluating to list | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true if variable 'a' is not set
++/// nand([true, var('a')])
++/// ```
++///
++local nand(conds) = not(and(conds));
++
++/// ---
++///
++/// ### `nor`
++///
++/// Negated [`or()`](#or) expression.
++///
++/// `nor`(`conds`: *list[expr] | expr*) -> *bool-expr*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `conds` | List of expressions or expression evaluating to list | None |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to true if variable 'a' is not set
++/// nor([false, var('a')])
++/// ```
++///
++local nor(conds) = not(or(conds));
++
++/// ---
++///
++/// ### `lines`
++///
++/// Generates a list of strings from newline-separated lines in string literal.
++/// Note that the last trailing newline will be removed before list generation.
++///
++/// `lines`(`data`: *str*) -> *list[str]*
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `data` | String literal that may contain newlines | None |
++///
++/// Example:
++/// ```jsonnet
++/// // expands to ["foo"]
++/// lines('foo')
++/// // expands to ["foo","bar"]
++/// lines('foo\\nbar')
++/// // expands to ["foo","  bar"]
++/// lines(|||
++///   foo
++///     bar
++/// |||)
++/// ```
++///
++local lines(data) =
++  assert std.isString(data) : 'lines() expects string literal argument for data';
++  local list = std.split(data, '\n');
++  local last = std.length(list) - 1;
++  // filter out last trailing newline
++  [ list[i]
++    for i in std.range(0, last)
++    if i != last || list[i] != ''
++  ];
++
++/// ---
++///
++/// ### `map`
++///
++/// Generate map from literal map or list of key value pairs.
++///
++/// `map`(`data`: *list[pair] | map*, `disjoint`: *bool*) -> *map-expr*
++///
++/// Generates a map-expression from list from key-value pairs or literal map.
++/// Each *pair* is of the form [`key`: *str-expr*, `value`: *expr*] with the
++/// first element being a string-expression.
++///
++/// | Argument | Description | Default value |
++/// |-|:-|:-:|
++/// | `data`     | (optional) List of pairs or literal map to create map-expression | `{}` |
++/// | `disjoint` | (optional) Bool indicating that data should be disjoint | `false` |
++///
++/// Example:
++/// ```jsonnet
++/// // evaluates to {}
++/// map()
++/// // evaluates to {"a":"x","b":"y"}
++/// map({a:'x',b:'y'})
++/// // evaluates to {"a":"x","b":"y"}
++/// map([ ['a','x'], ['b','y'] ])
++/// ```
++///
++local map(data={}, disjoint=false) =
++  assert data == null || std.isArray(data) || std.isObject(data)
++    : 'map() expects list or map argument for data';
++  assert std.isBoolean(disjoint)
++    : 'map() expects bool argument for disjoint';
++  if data == null || std.length(data) == 0 then
++    empty_map()
++  else if std.isArray(data) then
++    map_union(
++      [ singleton_map(p[0], p[1])
++        for p in
++          [ if std.isArray(p) then
++              if std.length(p) == 2 then p
++              else error 'map() expects pairs of length 2'
++            else error 'map() expects literal pairs in data list'
++            for p in data
++          ]
++      ], disjoint=disjoint)
++  else
++    map_union([singleton_map(x, data[x],) for x in std.objectFields(data)]);
++
++/// ## Aliases
++///
++/// Alias functions for providing a meaningful name to special syntactical
++/// constructs.
++///
++
++/// ---
++///
++/// ### `file`
++///
++/// Alias for explicitly referencing a source-file target.
++///
++/// `file`(`path`: *str*) -> *target-ref*
++///
++/// Expands to `["FILE", null, path]`.
++///
++local file(path) = ['FILE', null, path];
++
++/// ---
++///
++/// ### `link`
++///
++/// Alias for explicitly referencing a symlink target.
++///
++/// `link`(`path`: *str*) -> *target-ref*
++///
++/// Expands to `["SYMLINK", null, path]`.
++///
++local link(path) = ['SYMLINK', null, path];
++
++/// ---
++///
++/// ### `tree`
++///
++/// Alias for explicitly referencing a tree target.
++///
++/// `tree`(`path`: *str*) -> *target-ref*
++///
++/// Expands to `["TREE", null, path]`.
++///
++local tree(path) = ['TREE', null, path];
++
++/// ---
++///
++/// ### `glob`
++///
++/// Alias for referencing a collection of source files.
++///
++/// `glob`(`pattern`: *str*) -> *target-ref*
++///
++/// Expands to `["GLOB", null, pattern]`.
++///
++local glob(pattern) = ['GLOB', null, pattern];
++
++/// ---
++///
++/// ### `ref`
++///
++/// Alias for referencing a generic entity (target, rule, expression) in the
++/// local repository.
++///
++/// `ref`(`module`: *str*, `target`: *str*) -> *ref*
++///
++/// Expands to `[module, target]`.
++///
++local ref(module, target) = [module, target];
++
++/// ---
++///
++/// ### `ref_rel`
++///
++/// Alias for referencing a generic enity (target, rule, expression) relative to
++/// the current module in the local repository.
++///
++/// `ref_rel`(`submodule`: *str*, `target`: *str*) -> *ref*
++///
++/// Expands to `["./", submodule, target]`.
++///
++local ref_rel(submodule, target) = ['./', submodule, target];
++
++/// ---
++///
++/// ### `ref_ext`
++///
++/// Alias for referencing a target from an external repository.
++///
++/// `ref_ext`(`repo`: *str*, `module`: *str*, `target`: *str*) -> *ref*
++///
++/// Expands to `[repo, module, target]`.
++///
++local ref_ext(repo, module, target) = ['@', repo, module, target];
++
++/// ---
++///
++/// ### `set`
++///
++/// Alias for creating a var-val pair.
++///
++/// `set`(`var`: *string-expr*, `val`: *expr*) -> *pair*
++///
++/// Pairs are of the form [`var`: *str-expr*, `val`: *expr*].
++///
++local set(var, val) =
++  if std.isString(var) || std.isObject(var) then [var, val]
++  else error 'set() expects var to be string literal or string-expression';
++
++/// ## User-defined variables and functions
++///
++/// All functions are available in the global namespace. To avoid conflicts with
++/// existing (and possible upcoming) built-in functions, all user-defined
++/// variables and functions should be prefixed with `_`:
++///
++/// ```jsonnet
++/// local _foo = 'variable foo';
++/// local _bar(s) = 'function _bar called with s=' + s;
++///
++/// {
++///   output: [_foo, _bar('hello world')]
++/// }
++/// ```
++///
+-- 

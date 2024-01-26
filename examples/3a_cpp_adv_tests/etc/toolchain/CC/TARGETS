@@ -1,0 +1,51 @@
+local _utils = import 'utils.libsonnet';
+
+// Target definitions
+{
+  // Main dispatch target
+  defaults: {
+    type: ref('CC', 'defaults'),
+    arguments_config: ['TOOLCHAIN_CONFIG'],
+    base:
+      // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('generic' if unset)
+      //   'generic' -> target generic
+      //   'gnu'     -> target gcc
+      //   'clang'   -> target clang
+      //   *         -> fail
+      case(expr=_utils.get('FAMILY', 'TOOLCHAIN_CONFIG', default='generic'),
+           case={
+             generic: ['native_generic'],
+             gnu: ['native_gcc'],
+             clang: ['native_clang'],
+           },
+           default=fail('unsupported compiler family'),
+      ),
+  },
+
+  // Compiler generic for native compilation
+  native_generic: {
+    type: ref('CC', 'defaults'),
+    CC: 'cc',
+    CXX: 'c++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Compiler gcc for native compilation
+  native_gcc: {
+    type: ref('CC', 'defaults'),
+    CC: 'gcc',
+    CXX: 'g++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+
+  // Compiler clang for native compilation
+  native_clang: {
+    type: ref('CC', 'defaults'),
+    CC: 'clang',
+    CXX: 'clang++',
+    AR: 'ar',
+    PATH: ['/bin', '/usr/bin'],
+  },
+}

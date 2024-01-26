@@ -1,0 +1,50 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 18 Feb 2024 16:22:11 +0100
+Subject: [misc] Use user's cache for non-package bootstrap
+
+---
+ bin/bootstrap.py | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/bin/bootstrap.py b/bin/bootstrap.py
+index 2ddcf45d..37addcb4 100755
+--- a/bin/bootstrap.py
++++ b/bin/bootstrap.py
+@@ -85,7 +85,8 @@ if 'LOCALBASE' in os.environ:
+         pkg_paths = json.loads(os.environ['PKG_PATHS'])
+     g_CONFIG_PATHS += [os.path.join(g_LOCALBASE, p) for p in pkg_paths]
+ 
+-ENV['PKG_CONFIG_PATH'] = ":".join(g_CONFIG_PATHS)
++if g_CONFIG_PATHS:
++    ENV['PKG_CONFIG_PATH'] = ":".join(g_CONFIG_PATHS)
+ 
+ CONF_STRING: str = json.dumps(g_CONF)
+ 
+@@ -381,6 +382,17 @@ def copy_roots(*, repos_file: str, copy_dir: str) -> None:
+         json.dump(repos, f, indent=2)
+ 
+ 
++def get_build_root() -> str:
++    if g_LOCAL_DEPS:
++        # use fresh build root for package builds
++        return os.path.join(cast(str, g_WRKDIR), ".must")
++    else:
++        root_default: Path = Path.home() / ".cache/must"
++        root_fallback: Path = Path.home() / ".cache/just"
++        return str(root_fallback if not root_default.is_dir()
++                   and root_fallback.is_dir() else root_default)
++
++
+ def bootstrap() -> None:
+     if g_LOCAL_DEPS:
+         print("Bootstrap build in %r from sources %r against LOCALBASE %r" %
+@@ -439,7 +451,7 @@ def bootstrap() -> None:
+     ] + object_files + dep_flags["link"]
+     run(final_cmd, cwd=src_wrkdir)
+     CONF_FILE: str = os.path.join(cast(str, g_WRKDIR), "repo-conf.json")
+-    LOCAL_ROOT: str = os.path.join(cast(str, g_WRKDIR), ".must")
++    LOCAL_ROOT: str = get_build_root()
+     os.makedirs(LOCAL_ROOT, exist_ok=True)
+     distdirs = " --distdir=".join(g_DISTDIR)
+     run([
+-- 

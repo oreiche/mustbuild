@@ -1,0 +1,66 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 11 Feb 2024 12:13:52 +0100
+Subject: [targets] Support bool and strings in TARGETS
+
+... for config and string fields.
+---
+ .../build_engine/target_map/target_map.cpp    | 22 +++++++++++++++++++
+ .../build_engine/target_map/utils.cpp         |  4 ++++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
+index 3a3dd5ee..b81a961b 100644
+--- a/src/buildtool/build_engine/target_map/target_map.cpp
++++ b/src/buildtool/build_engine/target_map/target_map.cpp
+@@ -438,6 +438,17 @@ void withDependencies(
+         if (not field_value) {
+             return;
+         }
++        if (field_value->IsBool()) {
++            auto str_list = Expression::list_t{};
++            if (field_value->Bool()) {
++                str_list.emplace_back(std::string{"true"});
++            }
++            field_value = ExpressionPtr{Expression{str_list}};
++        }
++        if (field_value->IsString()) {
++            auto str_list = Expression::list_t{field_value};
++            field_value = ExpressionPtr{Expression{str_list}};
++        }
+         if (not field_value->IsList()) {
+             (*logger)(fmt::format("String field {} should be a list of "
+                                   "strings, but found {}",
+@@ -1018,6 +1029,17 @@ void withRuleDefinition(
+         if (not field_value) {
+             return;
+         }
++        if (field_value->IsBool()) {
++            auto str_list = Expression::list_t{};
++            if (field_value->Bool()) {
++                str_list.emplace_back(std::string{"true"});
++            }
++            field_value = ExpressionPtr{Expression{str_list}};
++        }
++        if (field_value->IsString()) {
++            auto str_list = Expression::list_t{field_value};
++            field_value = ExpressionPtr{Expression{str_list}};
++        }
+         if (not field_value->IsList()) {
+             (*logger)(fmt::format("Config field {} should evaluate to a list "
+                                   "of strings, but got{}",
+diff --git a/src/buildtool/build_engine/target_map/utils.cpp b/src/buildtool/build_engine/target_map/utils.cpp
+index 924b3727..7b4dec1f 100644
+--- a/src/buildtool/build_engine/target_map/utils.cpp
++++ b/src/buildtool/build_engine/target_map/utils.cpp
+@@ -162,6 +162,10 @@ auto BuildMaps::Target::Utils::getTainted(
+     if (not tainted_val) {
+         return false;
+     }
++    if (tainted_val->IsString()) {
++        auto str_list = Expression::list_t{tainted_val};
++        tainted_val = ExpressionPtr{Expression{str_list}};
++    }
+     if (not tainted_val->IsList()) {
+         (*logger)(fmt::format("tainted should evaluate to a list of strings, "
+                               "but got {}",
+-- 

@@ -1,0 +1,39 @@
+{
+  "main": "example",
+  "repositories": {
+    "example": {
+      "repository": {"type": "file", "path": "."},
+      "bindings": {
+        "rules": "rules/flags"
+      }
+    },
+    "rules-cc": {
+      "repository": {
+        "type": "git",
+        "branch": "master",
+        "commit": "1ef4873691f3e37dcd7a8ffa4605caff1c7091f0",
+        "repository": "https://github.com/just-buildsystem/rules-cc",
+        "subdir": "rules"
+      }
+    },
+    "root/flags": {
+      "repository": {"type": "file", "path": "etc/flags"}
+    },
+    "root/toolchain": {
+      "repository": {"type": "file", "path": "etc/toolchain"}
+    },
+    "rules/flags": {
+      "repository": "rules-cc",
+      "target_root": "root/flags",
+      "rule_root": "rules-cc",
+      "bindings": {
+        "toolchain": "rules/toolchain"
+      }
+    },
+    "rules/toolchain": {
+      "repository": "rules-cc",
+      "target_root": "root/toolchain",
+      "rule_root": "rules-cc"
+    }
+  }
+}

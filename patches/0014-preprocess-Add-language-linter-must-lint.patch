@@ -1,0 +1,72 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 11 Feb 2024 19:12:52 +0100
+Subject: [preprocess] Add language linter 'must-lint'
+
+---
+ bin/must-lint.sh         | 19 +++++++++++++++++++
+ share/man/must-lint.1.md | 29 +++++++++++++++++++++++++++++
+ 2 files changed, 48 insertions(+)
+ create mode 100755 bin/must-lint.sh
+ create mode 100644 share/man/must-lint.1.md
+
+diff --git a/bin/must-lint.sh b/bin/must-lint.sh
+new file mode 100755
+index 00000000..2cfeed21
+--- /dev/null
++++ b/bin/must-lint.sh
+@@ -0,0 +1,19 @@
++#!/bin/sh
++# Copyright 2024 Oliver Reiche <oliver.reiche@gmail.com>
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set -e
++
++# call Mustbuild preprocessor
++exec must preprocess "$@"
+diff --git a/share/man/must-lint.1.md b/share/man/must-lint.1.md
+new file mode 100644
+index 00000000..0b2f231d
+--- /dev/null
++++ b/share/man/must-lint.1.md
+@@ -0,0 +1,29 @@
++% MUST-LINT(1) | General Commands Manual
++
++NAME
++====
++
++must-lint - Preprocess a Mustbuild language file
++
++SYNOPSIS
++========
++
++**`must-lint`** \[*`OPTION`*\]... *`FILE`*  
++
++DESCRIPTION
++===========
++
++Wrapper script for calling the Mustbuild preprocessor without using any
++subcommands. With this tool, the Mustbuild preprocessor can be easily integrated
++into IDEs, usually as a replacement for the Jsonnet compiler.
++
++OPTIONS
++=======
++
++Please see the documentation of the subcommand **`preprocess`** in
++**`must-backend`**(5).
++
++See also
++========
++
++**`must-backend`**(5)
+-- 

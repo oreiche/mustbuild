@@ -1,0 +1,70 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 3 Mar 2024 18:34:49 +0100
+Subject: [misc] Add ALL target
+
+... containing auxiliary tools and man pages.
+---
+ TARGETS          | 26 ++++++++++++++++++++++++++
+ bin/bootstrap.py |  4 +++-
+ 2 files changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/TARGETS b/TARGETS
+index 44bb5f74..cae04b3d 100644
+--- a/TARGETS
++++ b/TARGETS
+@@ -115,6 +115,32 @@
+       {"type": "env", "vars": ["OS", "ARCH", "HOST_ARCH", "TARGET_ARCH"]}
+     }
+   }
++, "manpages":
++  { "type": "generic"
++  , "arguments_config": ["PANDOC_ENV"]
++  , "cmds":
++    [ "pandoc -s -t man share/man/must.1.md -o man1/must.1"
++    , "pandoc -s -t man share/man/must-lint.1.md -o man1/must-lint.1"
++    , "pandoc -s -t man share/man/must-backend.5.md -o man5/must-backend.5"
++    , "pandoc -s -t man share/man/must-backend-config.5.md -o man5/must-backend-config.5"
++    , "pandoc -s -t man share/man/must-graph-file.5.md -o man5/must-graph-file.5"
++    , "pandoc -s -t man share/man/mustrc.5.md -o man5/mustrc.5"
++    , "pandoc -s -t man share/man/must-repository-config.5.md -o man5/must-repository-config.5"
++    , "pandoc -s -t man share/man/must-serve-config.5.md -o man5/must-serve-config.5"
++    ]
++  , "out_dirs": ["man1", "man5"]
++  , "deps": [["TREE", null, "share"]]
++  , "env":
++    {"type": "var", "name": "PANDOC_ENV", "default": {"type":"empty_map"}}
++  }
++, "ALL":
++  { "type": "install"
++  , "dirs": [["must", "."], ["manpages", "share/man"]]
++  , "files":
++    { "bin/must-lint": "bin/must-lint.sh"
++    , "share/bash-completion/completions/must": "share/must_complete.bash"
++    }
++  }
+ , "libgit2":
+   { "type": "configure"
+   , "target": ["@", "libgit2", "", "git2"]
+diff --git a/bin/bootstrap.py b/bin/bootstrap.py
+index 37addcb4..711c0f14 100755
+--- a/bin/bootstrap.py
++++ b/bin/bootstrap.py
+@@ -34,6 +34,8 @@ Json = Dict[str, Any]
+ # path within the repository (constants)
+ 
+ DEBUG = os.environ.get("DEBUG")
++BOOTSTRAP_MODULE: str = os.environ.get("BOOTSTRAP_MODULE", "")
++BOOTSTRAP_TARGET: str = os.environ.get("BOOTSTRAP_TARGET", "must")
+ 
+ REPOS: str = "etc/repos.json"
+ MAIN_MODULE: str = ""
+@@ -481,7 +483,7 @@ def bootstrap() -> None:
+     run([
+         "./out-boot/%s" %
+         (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",
+-        "-D", CONF_STRING, "-o", OUT, MAIN_MODULE, MAIN_TARGET
++        "-D", CONF_STRING, "-o", OUT, BOOTSTRAP_MODULE, BOOTSTRAP_TARGET
+     ],
+         cwd=src_wrkdir)
+ 
+-- 

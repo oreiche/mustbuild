@@ -1,0 +1,315 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sat, 10 Feb 2024 16:30:04 +0100
+Subject: [preprocess] Add Jsonnet repository
+
+---
+ etc/defaults/CC/TARGETS.jsonnet               | 12 ++++
+ etc/defaults/CC/pkgconfig/TARGETS.jsonnet     |  1 +
+ etc/import.pkgconfig/TARGETS.jsonnet          |  5 ++
+ etc/import/TARGETS.jsonnet                    | 51 +++++++++++++++++
+ etc/import/core/TARGETS.jsonnet               | 29 ++++++++++
+ etc/import/include/TARGETS.jsonnet            |  3 +
+ etc/import/third_party/TARGETS.jsonnet        |  9 +++
+ .../rapidyaml/ext/c4core/src/TARGETS.jsonnet  | 56 +++++++++++++++++++
+ .../rapidyaml/rapidyaml/src/TARGETS.jsonnet   | 26 +++++++++
+ etc/repos.json                                | 20 +++++++
+ 10 files changed, 212 insertions(+)
+ create mode 100644 etc/defaults/CC/TARGETS.jsonnet
+ create mode 100644 etc/defaults/CC/pkgconfig/TARGETS.jsonnet
+ create mode 100644 etc/import.pkgconfig/TARGETS.jsonnet
+ create mode 100644 etc/import/TARGETS.jsonnet
+ create mode 100644 etc/import/core/TARGETS.jsonnet
+ create mode 100644 etc/import/include/TARGETS.jsonnet
+ create mode 100644 etc/import/third_party/TARGETS.jsonnet
+ create mode 100644 etc/import/third_party/rapidyaml/rapidyaml/ext/c4core/src/TARGETS.jsonnet
+ create mode 100644 etc/import/third_party/rapidyaml/rapidyaml/src/TARGETS.jsonnet
+
+diff --git a/etc/defaults/CC/TARGETS.jsonnet b/etc/defaults/CC/TARGETS.jsonnet
+new file mode 100644
+index 00000000..84363671
+--- /dev/null
++++ b/etc/defaults/CC/TARGETS.jsonnet
+@@ -0,0 +1,12 @@
++{ "defaults":
++  { "type": ["CC", "defaults"]
++  , "base": [["@", "base", "CC", "defaults"]]
++  , "ADD_CXXFLAGS":
++    [ "-std=c++17"
++    , "-Wall"
++    , "-Wextra"
++    , "-Woverloaded-virtual"
++    , "-pedantic"
++    ]
++  }
++}
+diff --git a/etc/defaults/CC/pkgconfig/TARGETS.jsonnet b/etc/defaults/CC/pkgconfig/TARGETS.jsonnet
+new file mode 100644
+index 00000000..9e26dfee
+--- /dev/null
++++ b/etc/defaults/CC/pkgconfig/TARGETS.jsonnet
+@@ -0,0 +1 @@
++{}
+\ No newline at end of file
+diff --git a/etc/import.pkgconfig/TARGETS.jsonnet b/etc/import.pkgconfig/TARGETS.jsonnet
+new file mode 100644
+index 00000000..8f9f0ba0
+--- /dev/null
++++ b/etc/import.pkgconfig/TARGETS.jsonnet
+@@ -0,0 +1,5 @@
++{ "jsonnet":
++  { "type": ["@", "rules", "CC/pkgconfig", "system_library"]
++  , "name": ["jsonnet"]
++  }
++}
+diff --git a/etc/import/TARGETS.jsonnet b/etc/import/TARGETS.jsonnet
+new file mode 100644
+index 00000000..ccf99f8b
+--- /dev/null
++++ b/etc/import/TARGETS.jsonnet
+@@ -0,0 +1,51 @@
++{ "jsonnet":
++  { "type": "export"
++  , "target": "libjsonnet"
++  , "flexible_config":
++    [ "OS"
++    , "ARCH"
++    , "TARGET_ARCH"
++    , "TOOLCHAIN_CONFIG"
++    , "DEBUG"
++    , "CXX"
++    , "CXXFLAGS"
++    , "ADD_CXXFLAGS"
++    , "AR"
++    , "ENV"
++    ]
++  }
++, "libjsonnet":
++  { "type": ["@", "rules", "CC", "library"]
++  , "name": ["jsonnet"]
++  , "hdrs": [["include", "public_headers"]]
++  , "private-hdrs":
++    [ ["core", "core_headers"]
++    , ["third_party", "third_party_headers"]
++    ]
++  , "srcs":
++    [ "core/desugarer.cpp"
++    , "core/formatter.cpp"
++    , "core/lexer.cpp"
++    , "core/libjsonnet.cpp"
++    , "core/parser.cpp"
++    , "core/pass.cpp"
++    , "core/static_analysis.cpp"
++    , "core/string_utils.cpp"
++    , "core/vm.cpp"
++    , "third_party/md5/md5.cpp"
++    , "third_party/rapidyaml/rapidyaml/src/c4/yml/tree.cpp"
++    , "third_party/rapidyaml/rapidyaml/src/c4/yml/parse.cpp"
++    , "third_party/rapidyaml/rapidyaml/src/c4/yml/common.cpp"
++    , "third_party/rapidyaml/rapidyaml/src/c4/yml/preprocess.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/memory_resource.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/language.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/time.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/error.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/format.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/base64.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/char_traits.cpp"
++    , "third_party/rapidyaml/rapidyaml/ext/c4core/src/c4/memory_util.cpp"
++    ]
++  }
++, "std.jsonnet": {"type": "install", "deps": ["stdlib/std.jsonnet"]}
++}
+diff --git a/etc/import/core/TARGETS.jsonnet b/etc/import/core/TARGETS.jsonnet
+new file mode 100644
+index 00000000..f1390667
+--- /dev/null
++++ b/etc/import/core/TARGETS.jsonnet
+@@ -0,0 +1,29 @@
++{ "core_headers":
++  { "type": "install"
++  , "files": {"std.jsonnet.h": "generate_std.jsonnet.h"}
++  , "deps":
++    [ "ast.h"
++    , "desugarer.h"
++    , "formatter.h"
++    , "json.h"
++    , "lexer.h"
++    , "parser.h"
++    , "pass.h"
++    , "state.h"
++    , "static_analysis.h"
++    , "static_error.h"
++    , "string_utils.h"
++    , "unicode.h"
++    , "vm.h"
++    ]
++  }
++, "generate_std.jsonnet.h":
++  { "type": "generic"
++  , "cmds":
++    [ "((od -v -Anone -t u1 stdlib/std.jsonnet | tr ' ' '\\n' | grep -v '^$' | tr '\\n' ',' ) && echo '0') > std.jsonnet.h"
++	  , "echo >> std.jsonnet.h"
++    ]
++  , "outs": ["std.jsonnet.h"]
++  , "deps": [["", "std.jsonnet"]]
++  }
++}
+\ No newline at end of file
+diff --git a/etc/import/include/TARGETS.jsonnet b/etc/import/include/TARGETS.jsonnet
+new file mode 100644
+index 00000000..b987ca91
+--- /dev/null
++++ b/etc/import/include/TARGETS.jsonnet
+@@ -0,0 +1,3 @@
++{ "public_headers":
++  {"type": "install", "deps": ["libjsonnet.h", "libjsonnet_fmt.h"]}
++}
+diff --git a/etc/import/third_party/TARGETS.jsonnet b/etc/import/third_party/TARGETS.jsonnet
+new file mode 100644
+index 00000000..c04bdaad
+--- /dev/null
++++ b/etc/import/third_party/TARGETS.jsonnet
+@@ -0,0 +1,9 @@
++{ "third_party_headers":
++  { "type": "install"
++  , "files": {"md5.h": "md5/md5.h", "json.hpp": "json/json.hpp"}
++  , "deps":
++    [ ["./", "rapidyaml/rapidyaml/src", "rapidyaml_headers"]
++    , ["./", "rapidyaml/rapidyaml/ext/c4core/src", "rapidyaml_ext_headers"]
++    ]
++  }
++}
+\ No newline at end of file
+diff --git a/etc/import/third_party/rapidyaml/rapidyaml/ext/c4core/src/TARGETS.jsonnet b/etc/import/third_party/rapidyaml/rapidyaml/ext/c4core/src/TARGETS.jsonnet
+new file mode 100644
+index 00000000..97414add
+--- /dev/null
++++ b/etc/import/third_party/rapidyaml/rapidyaml/ext/c4core/src/TARGETS.jsonnet
+@@ -0,0 +1,56 @@
++{ "rapidyaml_ext_headers":
++  { "type": "install"
++  , "deps":
++    [ "c4/allocator.hpp"
++    , "c4/base64.hpp"
++    , "c4/bitmask.hpp"
++    , "c4/blob.hpp"
++    , "c4/c4_pop.hpp"
++    , "c4/c4_push.hpp"
++    , "c4/charconv.hpp"
++    , "c4/char_traits.hpp"
++    , "c4/common.hpp"
++    , "c4/compiler.hpp"
++    , "c4/config.hpp"
++    , "c4/cpu.hpp"
++    , "c4/ctor_dtor.hpp"
++    , "c4/enum.hpp"
++    , "c4/error.hpp"
++    , "c4/export.hpp"
++    , "c4/format.hpp"
++    , "c4/hash.hpp"
++    , "c4/language.hpp"
++    , "c4/memory_resource.hpp"
++    , "c4/memory_util.hpp"
++    , "c4/platform.hpp"
++    , "c4/preprocessor.hpp"
++    , "c4/restrict.hpp"
++    , "c4/span.hpp"
++    , "c4/std/std.hpp"
++    , "c4/std/string.hpp"
++    , "c4/std/tuple.hpp"
++    , "c4/std/vector.hpp"
++    , "c4/substr_fwd.hpp"
++    , "c4/substr.hpp"
++    , "c4/szconv.hpp"
++    , "c4/time.hpp"
++    , "c4/type_name.hpp"
++    , "c4/types.hpp"
++    , "c4/unrestrict.hpp"
++    , "c4/windows.hpp"
++    , "c4/windows_pop.hpp"
++    , "c4/windows_push.hpp"
++    , "c4/ext/debugbreak/debugbreak.h"
++    , "c4/ext/fast_float.hpp"
++    , "c4/ext/fast_float/include/fast_float/ascii_number.h"
++    , "c4/ext/fast_float/include/fast_float/decimal_to_binary.h"
++    , "c4/ext/fast_float/include/fast_float/fast_float.h"
++    , "c4/ext/fast_float/include/fast_float/fast_table.h"
++    , "c4/ext/fast_float/include/fast_float/float_common.h"
++    , "c4/ext/fast_float/include/fast_float/parse_number.h"
++    , "c4/ext/fast_float/include/fast_float/simple_decimal_conversion.h"
++    , "c4/ext/rng/rng.hpp"
++    , "c4/ext/sg14/inplace_function.h"
++    ]
++  }
++}
+\ No newline at end of file
+diff --git a/etc/import/third_party/rapidyaml/rapidyaml/src/TARGETS.jsonnet b/etc/import/third_party/rapidyaml/rapidyaml/src/TARGETS.jsonnet
+new file mode 100644
+index 00000000..e2c5fc80
+--- /dev/null
++++ b/etc/import/third_party/rapidyaml/rapidyaml/src/TARGETS.jsonnet
+@@ -0,0 +1,26 @@
++{ "rapidyaml_headers":
++  { "type": "install"
++  , "deps":
++    [ "ryml.hpp"
++    , "ryml_std.hpp"
++    , "c4/yml/common.hpp"
++    , "c4/yml/detail/checks.hpp"
++    , "c4/yml/detail/parser_dbg.hpp"
++    , "c4/yml/detail/print.hpp"
++    , "c4/yml/detail/stack.hpp"
++    , "c4/yml/emit.def.hpp"
++    , "c4/yml/emit.hpp"
++    , "c4/yml/export.hpp"
++    , "c4/yml/node.hpp"
++    , "c4/yml/parse.hpp"
++    , "c4/yml/preprocess.hpp"
++    , "c4/yml/std/map.hpp"
++    , "c4/yml/std/std.hpp"
++    , "c4/yml/std/string.hpp"
++    , "c4/yml/std/vector.hpp"
++    , "c4/yml/tree.hpp"
++    , "c4/yml/writer.hpp"
++    , "c4/yml/yml.hpp"
++    ]
++  }
++}
+\ No newline at end of file
+diff --git a/etc/repos.json b/etc/repos.json
+index 46b82226..11fa1894 100644
+--- a/etc/repos.json
++++ b/etc/repos.json
+@@ -164,6 +164,13 @@
+     , "target_file_name": "TARGETS.archive"
+     , "bindings": {"base": "rules"}
+     }
++  , "rules-jsonnet":
++    { "repository": "rules"
++    , "target_root": "defaults"
++    , "rule_root": "rules"
++    , "target_file_name": "TARGETS.jsonnet"
++    , "bindings": {"base": "rules"}
++    }
+   , "import targets":
+     { "repository":
+       {"type": "file", "path": "etc/import", "pragma": {"to_git": true}}
+@@ -487,5 +494,18 @@
+       , "lzma": "lzma"
+       }
+     }
++  , "jsonnet":
++    { "repository":
++      { "type": "archive"
++      , "content": "273ba750b381e3f4d70ffbfd93eeef32d82d7939"
++      , "fetch": "https://github.com/google/jsonnet/archive/refs/tags/v0.20.0.tar.gz"
++      , "sha256": "77bd269073807731f6b11ff8d7c03e9065aafb8e4d038935deb388325e52511b"
++      , "sha512": "d46d2521d4389d05f91a16ecd9f181be1853f674a9264e9fac23e413f1084dee947e80682af59603e15e443061a0beb50a30c14c858853e10ed1ae7187d09730"
++      , "subdir": "jsonnet-0.20.0"
++      }
++    , "target_root": "import targets"
++    , "target_file_name": "TARGETS.jsonnet"
++    , "bindings": {"rules": "rules-jsonnet"}
++    }
+   }
+ }
+-- 

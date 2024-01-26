@@ -1,0 +1,35 @@
+// Generic project flags (used for C _and_ C++)
+local _generic = ['-Wall', '-Werror', '-pedantic'];
+
+// C flags
+local _cflags = ['-std=c11'] + _generic;
+
+// C++ flags
+local _cxxflags = ['-std=c++14'] + _generic;
+
+// Common debug flags
+local _debug = ['-O0', '-g'];
+
+// Common release flags
+local _release = ['-O2', '-DNDEBUG'];
+
+local _cflags_dbg = _debug + _cflags;
+local _cflags_rel = _release + _cflags;
+local _cxxflags_dbg = _debug + _cxxflags;
+local _cxxflags_rel = _release + _cxxflags;
+
+// Target definitions
+{
+  // 'defaults' is the default target for setting project settings.
+  // It uses the rule ['CC', 'defaults'].
+  defaults: {
+    type: ref('CC', 'defaults'),
+    // We want to read variable 'DEBUG'.
+    arguments_config: ['DEBUG'],
+    // Inherit flags from toolchain settings (see etc/toolchain/CC/TARGETS).
+    base: [ref_ext('toolchain', 'CC', 'defaults')],
+    // Set flags for C and C++ (additional to flags from toolchain settings)
+    ADD_CFLAGS: select(var('DEBUG'), _cflags_dbg, _cflags_rel),
+    ADD_CXXFLAGS: select(var('DEBUG'), _cxxflags_dbg, _cxxflags_rel),
+  },
+}

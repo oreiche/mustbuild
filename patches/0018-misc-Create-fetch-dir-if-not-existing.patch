@@ -1,0 +1,59 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 18 Feb 2024 19:19:01 +0100
+Subject: [misc] Create fetch dir if not existing
+
+---
+ share/man/must.1.md               |  5 ++---
+ src/other_tools/just_mr/fetch.cpp | 20 +++++++++-----------
+ 2 files changed, 11 insertions(+), 14 deletions(-)
+
+diff --git a/share/man/must.1.md b/share/man/must.1.md
+index 7c0c0f76..096a3a9a 100644
+--- a/share/man/must.1.md
++++ b/share/man/must.1.md
+@@ -256,9 +256,8 @@ from the configuration is used. To perform the fetch for all
+ repositories from the input configuration file, use the **`--all`**
+ flag.
+ 
+-By default the first existing distribution directory is used as the
+-output directory for writing the fetched archives on disk. If no
+-existing distribution directory can be found an error is produced. To
++By default the first distribution directory is used as the
++output directory for writing the fetched archives on disk. To
+ define an output directory that is independent of the given distribution
+ directories, use the **`-o`** option.
+ 
+diff --git a/src/other_tools/just_mr/fetch.cpp b/src/other_tools/just_mr/fetch.cpp
+index f2c3e8a9..59556346 100644
+--- a/src/other_tools/just_mr/fetch.cpp
++++ b/src/other_tools/just_mr/fetch.cpp
+@@ -47,19 +47,17 @@ auto MultiRepoFetch(std::shared_ptr<Configuration> const& config,
+     // find fetch dir
+     auto fetch_dir = fetch_args.fetch_dir;
+     if (not fetch_dir) {
+-        for (auto const& d : common_args.just_mr_paths->distdirs) {
+-            if (FileSystemManager::IsDirectory(d)) {
+-                fetch_dir = std::filesystem::weakly_canonical(
+-                    std::filesystem::absolute(d));
+-                break;
+-            }
++        if (common_args.just_mr_paths->distdirs.empty()) {
++            Logger::Log(LogLevel::Error,
++                        "No fetch or distribution directory specified");
++            return kExitFetchError;
+         }
++        fetch_dir = common_args.just_mr_paths->distdirs.front();
+     }
+-    if (not fetch_dir) {
+-        auto considered = nlohmann::json(common_args.just_mr_paths->distdirs);
+-        Logger::Log(LogLevel::Error,
+-                    "No directory found to fetch to, considered {}",
+-                    considered.dump());
++    if (not FileSystemManager::IsDirectory(*fetch_dir) and
++        not FileSystemManager::CreateDirectory(*fetch_dir)) {
++        Logger::Log(
++            LogLevel::Error, "Cannot create directory {}", fetch_dir->string());
+         return kExitFetchError;
+     }
+ 
+-- 

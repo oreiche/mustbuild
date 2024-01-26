@@ -1,0 +1,62 @@
+From: Oliver Reiche <oliver.reiche@gmail.com>
+Date: Sun, 24 Dec 2023 11:21:41 +0100
+Subject: [progress] Reporter: Print additional line after done
+
+---
+ .../base_progress_reporter.cpp                | 29 +++++++++++++------
+ 1 file changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/src/buildtool/progress_reporting/base_progress_reporter.cpp b/src/buildtool/progress_reporting/base_progress_reporter.cpp
+index 4c92ec5d..7cec5001 100644
+--- a/src/buildtool/progress_reporting/base_progress_reporter.cpp
++++ b/src/buildtool/progress_reporting/base_progress_reporter.cpp
+@@ -22,6 +22,19 @@
+ #include "src/buildtool/logging/log_level.hpp"
+ #include "src/buildtool/logging/logger.hpp"
+ 
++namespace {
++void CallReport(std::function<void(void)> const& report) noexcept {
++    try {
++        report();
++    } catch (std::exception const& ex) {
++        Logger::Log(LogLevel::Warning,
++                    "calling progress report function failed with:\n{}",
++                    ex.what());
++        // continue with progress reporting
++    }
++}
++}  // namespace
++
+ auto BaseProgressReporter::Reporter(std::function<void(void)> report) noexcept
+     -> progress_reporter_t {
+     return [report = std::move(report)](std::atomic<bool>* done,
+@@ -29,21 +42,19 @@ auto BaseProgressReporter::Reporter(std::function<void(void)> report) noexcept
+         std::mutex m;
+         std::unique_lock<std::mutex> lock(m);
+         std::int64_t delay = kStartDelayMillis;
++        bool called{};
+         while (not *done) {
+             cv->wait_for(lock, std::chrono::milliseconds(delay));
+             if (not *done) {
+-                try {
+-                    report();
+-                } catch (std::exception const& ex) {
+-                    Logger::Log(
+-                        LogLevel::Warning,
+-                        "calling progress report function failed with:\n{}",
+-                        ex.what());
+-                    // continue with progress reporting
+-                }
++                CallReport(report);
++                called = true;
+             }
+             delay = delay * kDelayScalingFactorNumerator /
+                     kDelayScalingFactorDenominator;
+         }
++        if (called) {
++            // call a final time to print the latest state
++            CallReport(report);
++        }
+     };
+ }
+-- 
