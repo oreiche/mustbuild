@@ -1,0 +1,191 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - testing*
+      - github-ci*
+
+jobs:
+  linux-x86_64:
+    name: Linux x86_64
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute base commit
+        run: |
+          git fetch https://github.com/oreiche/mustbuild master
+          BASE_COMMIT="$(git merge-base ${GITHUB_REF_NAME} FETCH_HEAD)"
+          echo "BASE_COMMIT=${BASE_COMMIT}" >> $GITHUB_ENV
+
+      - name: Restore local cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./work_static-x86_64/build/.must
+          key: deploy-${{ runner.os }}-x86_64
+
+      - name: Build TAR package
+        run: |
+          .github/make-pkg/docker-build.sh ${BASE_COMMIT} static-x86_64
+          cp ./work_static-x86_64/source/mustbuild-*.tar.gz .
+
+      - name: Run garbage collector and clean cache
+        if: ${{ success() }}
+        run: |
+          docker run --rm -v $GITHUB_WORKSPACE:/workspace -w /workspace \
+            must-make-tar:static-x86_64 sh -c "\
+              just gc --local-build-root \$(pwd)/work_static-x86_64/build/.must"
+          gh extension install actions/gh-actions-cache
+          if [ -n "$(gh actions-cache list -R ${GITHUB_REPOSITORY} -B ${GITHUB_REF} --key 'deploy-${{ runner.os }}-x86_64')" ]; then
+            gh actions-cache delete "deploy-${{ runner.os }}-x86_64" -R ${GITHUB_REPOSITORY} -B ${GITHUB_REF} --confirm
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Store local cache
+        uses: actions/cache/save@v4
+        if: ${{ success() }}
+        with:
+          path: ./work_static-x86_64/build/.must
+          key: deploy-${{ runner.os }}-x86_64
+
+      - name: Build DEB package
+        run: |
+          .github/make-pkg/docker-build.sh ${BASE_COMMIT} bundled-deb
+          cp ./work_bundled-deb/source/mustbuild_*.deb .
+
+      - name: Build RPM package
+        run: |
+          .github/make-pkg/docker-build.sh ${BASE_COMMIT} bundled-rpm
+          cp ./work_bundled-rpm/source/rpmbuild/RPMS/x86_64/mustbuild-*.rpm .
+
+      - name: Collect packages
+        run: |
+          tar --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' -czvf mustbuild-x86_64-linux.tar.gz *.tar.gz *.deb *.rpm
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: mustbuild-x86_64-linux
+          path: mustbuild-x86_64-linux.tar.gz
+          retention-days: 1
+
+  linux-aarch64:
+    name: Linux aarch64
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute base commit
+        run: |
+          git fetch https://github.com/oreiche/mustbuild master
+          BASE_COMMIT="$(git merge-base ${GITHUB_REF_NAME} FETCH_HEAD)"
+          echo "BASE_COMMIT=${BASE_COMMIT}" >> $GITHUB_ENV
+
+      - name: Restore local cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./work_static-aarch64/build/.must
+          key: deploy-${{ runner.os }}-aarch64
+
+      - name: Build TAR package
+        run: |
+          .github/make-pkg/docker-build.sh ${BASE_COMMIT} static-aarch64
+          cp ./work_static-aarch64/source/mustbuild-*.tar.gz .
+
+      - name: Run garbage collector and clean cache
+        if: ${{ success() }}
+        run: |
+          docker run --rm -v $GITHUB_WORKSPACE:/workspace -w /workspace \
+            must-make-tar:static-aarch64 sh -c "\
+              just gc --local-build-root \$(pwd)/work_static-x86_64/build/.must"
+          gh extension install actions/gh-actions-cache
+          if [ -n "$(gh actions-cache list -R ${GITHUB_REPOSITORY} -B ${GITHUB_REF} --key 'deploy-${{ runner.os }}-aarch64')" ]; then
+            gh actions-cache delete "deploy-${{ runner.os }}-aarch64" -R ${GITHUB_REPOSITORY} -B ${GITHUB_REF} --confirm
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Store local cache
+        uses: actions/cache/save@v4
+        if: ${{ success() }}
+        with:
+          path: ./work_static-aarch64/build/.must
+          key: deploy-${{ runner.os }}-aarch64
+
+      - name: Collect packages
+        run: |
+          tar --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' -czvf mustbuild-aarch64-linux.tar.gz *.tar.gz
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: mustbuild-aarch64-linux
+          path: mustbuild-aarch64-linux.tar.gz
+          retention-days: 1
+
+  deploy-packages:
+    name: Deploy Packages
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
+    runs-on: ubuntu-22.04
+    needs: [linux-x86_64, linux-aarch64]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Retrieve x86_64 Linux packages
+        uses: actions/download-artifact@v4
+        with:
+          name: mustbuild-x86_64-linux
+
+      - name: Retrieve aarch64 Linux packages
+        uses: actions/download-artifact@v4
+        with:
+          name: mustbuild-aarch64-linux
+
+      - name: Unpack retrieved archives
+        run: |
+          tar -xzvf mustbuild-x86_64-linux.tar.gz
+          rm mustbuild-x86_64-linux.tar.gz
+          tar -xzvf mustbuild-aarch64-linux.tar.gz
+          rm mustbuild-aarch64-linux.tar.gz
+
+      - name: Determine release info and create checksums
+        run: |
+          VERSION="$(ls *.tar.gz | sed -n 's/.*mustbuild-\(.*\)-x86_64-linux.tar.gz/\1/p')"
+          UNTAGGED=$([[ "$VERSION" = *+* ]] && echo true || echo false)
+          TAG_NAME="v$(echo $VERSION | tr '~+' '-')"
+          echo "UNTAGGED=${UNTAGGED}" >> $GITHUB_ENV
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          sha256sum *.tar.gz *.deb *.rpm | tee SHA256SUMS
+
+      - name: Upload package checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: SHA256SUMS
+          if-no-files-found: error
+
+      - name: Upload package release
+        uses: xresloader/upload-to-github-release@v1
+        if: startsWith(github.ref, 'refs/heads/github-ci')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "*.tar.gz;*.deb;*.rpm;SHA256SUMS"
+          tag_name: ${{ env.TAG_NAME }}
+          prerelease: ${{ env.UNTAGGED }}
+          tags: false
+          draft: false
+          overwrite: true

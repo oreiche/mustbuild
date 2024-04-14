@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+
+%:
+	dh $@
+
+override_dh_clean:
+	make -f debian/mustbuild.makefile clean
+	dh_clean
+
+override_dh_auto_build:
+	dh_auto_build --buildsystem=makefile -- -f debian/mustbuild.makefile
+
+override_dh_auto_install:
+	dh_auto_install --buildsystem=makefile -- -f debian/mustbuild.makefile

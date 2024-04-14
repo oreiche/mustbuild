@@ -1,0 +1,383 @@
+{ "debian11":
+  { "type": "deb"
+  , "image": "debian:bullseye"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libarchive-dev"
+    , "libc-ares-dev"
+    , "zlib1g-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps":
+    [ "cli11"
+    , "com_github_microsoft_gsl"
+    , "com_github_curl_curl"
+    , "google_apis"
+    , "bazel_remote_apis"
+    ]
+  , "gen-pkgconfig": [{"Name": "jsonnet", "Libs": "-ljsonnet"}]
+  }
+, "debian12":
+  { "type": "deb"
+  , "image": "debian:bookworm"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "debian_sid":
+  { "type": "deb"
+  , "image": "debian:sid"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "ubuntu20.04":
+  { "type": "deb"
+  , "image": "ubuntu:20.04"
+  , "distrelease": "focal"
+  , "build-depends":
+    [ "clang"
+    , "libstdc++-10-dev"
+    , "libssl-dev"
+    , "libarchive-dev"
+    , "libc-ares-dev"
+    , "zlib1g-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps":
+    [ "fmt"
+    , "json"
+    , "cli11"
+    , "protobuf"
+    , "com_github_grpc_grpc"
+    , "com_google_absl"
+    , "re2"
+    , "com_github_libgit2_libgit2"
+    , "com_github_microsoft_gsl"
+    , "com_github_curl_curl"
+    , "google_apis"
+    , "bazel_remote_apis"
+    ]
+  , "gen-pkgconfig": [{"Name": "jsonnet", "Libs": "-ljsonnet"}]
+  }
+, "ubuntu22.04":
+  { "type": "deb"
+  , "image": "ubuntu:22.04"
+  , "distrelease": "jammy"
+  , "build-depends":
+    [ "clang"
+    , "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "ubuntu22.10":
+  { "type": "deb"
+  , "image": "ubuntu:22.10"
+  , "distrelease": "kinetic"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "ubuntu23.04":
+  { "type": "deb"
+  , "image": "ubuntu:23.04"
+  , "distrelease": "lunar"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "ubuntu23.10":
+  { "type": "deb"
+  , "image": "ubuntu:23.10"
+  , "distrelease": "mantic"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "fedora37":
+  { "type": "rpm"
+  , "image": "fedora:37"
+  , "build-depends":
+    [ "g++"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "libgit2-devel"
+    , "protobuf-compiler"
+    , "protobuf-devel"
+    , "protobuf-lite-devel"
+    , "grpc-devel"
+    , "grpc-plugins"
+    , "json-devel"
+    , "openssl-devel"
+    , "fmt-devel"
+    , "cli11-devel"
+    , "libcurl-devel"
+    , "libarchive-devel"
+    , "zlib-devel"
+    , "gsl-lite-devel"
+    , "googleapis-devel"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["bazel_remote_apis", "jsonnet"]
+  , "gen-includes": {"gsl/gsl": "#include <gsl/gsl-lite.hpp>"}
+  , "gen-pkgconfig":
+    [{"Name": "gsl", "Cflags": "-I${gen_includes} -I/usr/include"}]
+  }
+, "fedora38":
+  { "type": "rpm"
+  , "image": "fedora:38"
+  , "build-depends":
+    [ "g++"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "libgit2-devel"
+    , "protobuf-compiler"
+    , "protobuf-devel"
+    , "protobuf-lite-devel"
+    , "grpc-devel"
+    , "grpc-plugins"
+    , "json-devel"
+    , "openssl-devel"
+    , "fmt-devel"
+    , "cli11-devel"
+    , "libcurl-devel"
+    , "libarchive-devel"
+    , "zlib-devel"
+    , "gsl-lite-devel"
+    , "googleapis-devel"
+    , "jsonnet-devel"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["bazel_remote_apis"]
+  , "gen-includes": {"gsl/gsl": "#include <gsl/gsl-lite.hpp>"}
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I${gen_includes} -I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "fedora39":
+  { "type": "rpm"
+  , "image": "fedora:39"
+  , "build-depends":
+    [ "g++"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "libgit2-devel"
+    , "protobuf-compiler"
+    , "protobuf-devel"
+    , "protobuf-lite-devel"
+    , "grpc-devel"
+    , "grpc-plugins"
+    , "json-devel"
+    , "openssl-devel"
+    , "fmt-devel"
+    , "cli11-devel"
+    , "libcurl-devel"
+    , "libarchive-devel"
+    , "zlib-devel"
+    , "gsl-lite-devel"
+    , "googleapis-devel"
+    , "jsonnet-devel"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["bazel_remote_apis"]
+  , "gen-includes": {"gsl/gsl": "#include <gsl/gsl-lite.hpp>"}
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I${gen_includes} -I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
+, "static-x86_64":
+  { "type": "tar"
+  , "image": "ghcr.io/void-linux/void-musl:latest"
+  , "target-arch": "x86_64"
+  , "build-depends":
+    [ "gcc"
+    , "jq"
+    , "wget"
+    , "git"
+    , "patch"
+    , "tar"
+    , "gzip"
+    , "unzip"
+    , "pandoc"
+    , "python3"
+    ]
+  }
+, "static-aarch64":
+  { "type": "tar"
+  , "image": "ghcr.io/void-linux/void-musl:latest"
+  , "target-arch": "aarch64"
+  , "build-depends":
+    [ "gcc"
+    , "cross-aarch64-linux-musl"
+    , "jq"
+    , "wget"
+    , "git"
+    , "patch"
+    , "tar"
+    , "gzip"
+    , "unzip"
+    , "pandoc"
+    , "python3"
+    ]
+  }
+, "bundled-deb":
+  {"type": "deb", "prebuilt": "static-x86_64", "image": "ubuntu:22.04"}
+, "bundled-rpm":
+  {"type": "rpm", "prebuilt": "static-x86_64", "image": "fedora:33"}
+}

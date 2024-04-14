@@ -1,0 +1,19 @@
+Source: mustbuild
+Section: devel
+Priority: optional
+Maintainer: Oliver Reiche <oliver.reiche@gmail.com>
+Build-Depends: debhelper-compat (= COMPAT_LEVEL), BUILD_DEPENDS
+Standards-Version: 4.6.1.0
+Homepage: https://github.com/oreiche/mustbuild
+Vcs-Browser: https://github.com/oreiche/mustbuild
+Vcs-Git: https://github.com/oreiche/mustbuild.git
+Rules-Requires-Root: no
+
+Package: mustbuild
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: python3, bash-completion, git (>= 2.29)
+Description: mustbuild generic build system
+ Mustbuild is a friendly fork of Justbuild. It is is maintained as a patch
+ series. This fork introduces extensions that mainly focus on improving
+ usability while being fully compatible with existing Justbuild projects.
