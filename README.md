@@ -1,4 +1,4 @@
-# Mustbuild
+# Mustbuild [![Bootstrap and Deploy](../../actions/workflows/deploy.yml/badge.svg)](../../releases)
 
 Mustbuild is a friendly fork of
 [Justbuild](https://github.com/just-buildsystem/justbuild). It is is maintained
