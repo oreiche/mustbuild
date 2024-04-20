@@ -120,7 +120,7 @@ cond([ [null, 'fail'],
 
 ### `case`
 
-Select expression from caes.
+Select expression from cases.
 
 `case`(`expr`: *expr*, `case`: *map | list[pair]*, `default`: *expr*) -> *expr*
 
@@ -484,6 +484,50 @@ map_union([ map({a:'x'}), map({a:'y'} ], disjoint=true)
 
 ---
 
+### `sum`
+
+Compute sum from list of numbers.
+
+`sum`(`nums`: *list-expr*) -> *num-expr*
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `nums` | List-expression containing numbers | None |
+
+> Note that sum of the empty list is the neutral element `0`.
+
+Example:
+```jsonnet
+// evaluates to 0
+sum([])
+// evaluates to 6
+sum([4, 2])
+```
+
+---
+
+### `prod`
+
+Compute product from list of numbers.
+
+`prod`(`nums`: *list-expr*) -> *num-expr*
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `nums` | List-expression containing numbers | None |
+
+> Note that product of the empty list is the neutral element `1`.
+
+Example:
+```jsonnet
+// evaluates to 1
+prod([])
+// evaluates to 8
+prod([4, 2])
+```
+
+---
+
 ### `join_cmd`
 
 Join strings with shell quoting (POSIX shell can decode original list).
@@ -665,7 +709,7 @@ Lookup value of key in map.
 |-|:-|:-:|
 | `key`     | String-expression used as key for lookup | None |
 | `map`     | Map-expression to lookup the value from at key | None |
-| `default` | (optional) Expression returend if key is not found | `null` |
+| `default` | (optional) Expression returned if key is not found | `null` |
 
 Example:
 ```jsonnet
@@ -676,6 +720,33 @@ lookup('c', map({a:'x', b:'y'}), default='z')
 ```
 
 > See also [`map()`](#map).
+
+---
+
+### `at`
+
+Access value at index in list.
+
+`at`(`index`: *num-expr | str-expr*, `list`: *list-expr*, `default`: *expr*) -> *expr*
+
+String indices will be interpreted as integers and numbers will be rounded
+to the nearest integer. Negative indicies count from the end of the list.
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `index`   | Number or string-expression used as list index | None |
+| `list`    | List-expression to access the value from at index | None |
+| `default` | (optional) Expression returned if index is out of bounds | `null` |
+
+Example:
+```jsonnet
+// evaluates to "x"
+at('0', ['x', 'y'])
+// evaluates to "y"
+at(-1, ['x', 'y'])
+// evaluates to "z"
+at(2, ['x', 'y'], default='z')
+```
 
 ---
 
