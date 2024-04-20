@@ -16,10 +16,10 @@ Subject: [progress] Reporter: Add interactive reporting
  10 files changed, 203 insertions(+), 17 deletions(-)
 
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index cf348bff..e7ff4914 100644
+index eded8112..125d5000 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -52,6 +52,8 @@ struct LogArguments {
+@@ -53,6 +53,8 @@ struct LogArguments {
      std::optional<LogLevel> restrict_stderr_log_limit{};
      bool plain_log{false};
      bool log_append{false};
@@ -28,7 +28,7 @@ index cf348bff..e7ff4914 100644
  };
  
  /// \brief Arguments required for analysing targets.
-@@ -260,13 +262,27 @@ static inline auto SetupLogArguments(
+@@ -255,13 +257,27 @@ static inline auto SetupLogArguments(
             "Restrict logging on console to the minimum of the specified "
             "--log-limit and this value")
          ->type_name("NUM");
@@ -74,10 +74,10 @@ index 88c55b2e..e0e72cbf 100644
      std::vector<std::string>{"env", "--"};
  
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index a4ea8688..f01c7815 100644
+index 11bc3925..c9b78e98 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -947,7 +947,11 @@ auto main(int argc, char* argv[]) -> int {
+@@ -927,7 +927,11 @@ auto main(int argc, char* argv[]) -> int {
              RemoteExecutionConfig::DispatchList(),
              &stats,
              &progress,
@@ -320,10 +320,10 @@ index 13136579..0ea0cace 100644
  };
  
 diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
-index a40cf9b3..aee878bd 100644
+index 026d52f7..34bf8a7c 100644
 --- a/src/other_tools/just_mr/cli.hpp
 +++ b/src/other_tools/just_mr/cli.hpp
-@@ -64,6 +64,8 @@ struct MultiRepoLogArguments {
+@@ -65,6 +65,8 @@ struct MultiRepoLogArguments {
      std::optional<LogLevel> restrict_stderr_log_limit{};
      bool plain_log{false};
      bool log_append{false};
@@ -332,7 +332,7 @@ index a40cf9b3..aee878bd 100644
  };
  
  struct MultiRepoSetupArguments {
-@@ -99,7 +101,7 @@ struct ForwardOnlyArguments {
+@@ -100,7 +102,7 @@ struct ForwardOnlyArguments {
      std::vector<std::string> remote_execution_properties{};
  };
  
@@ -341,7 +341,7 @@ index a40cf9b3..aee878bd 100644
  
  enum class SubCommand {
      kUnknown,
-@@ -284,13 +286,27 @@ static inline auto SetupMultiRepoLogArguments(
+@@ -286,13 +288,27 @@ static inline auto SetupMultiRepoLogArguments(
             "Restrict logging on console to the minimum of the specified "
             "--log-limit and this value")
          ->type_name("NUM");
@@ -373,10 +373,10 @@ index a40cf9b3..aee878bd 100644
  
  static inline void SetupMultiRepoSetupArguments(
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index 7a9a44de..35716ebb 100644
+index 34597bec..25e8656a 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
-@@ -138,6 +138,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -139,6 +139,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
      }
      if (log_args.plain_log) {
          cmd.emplace_back("--plain-log");

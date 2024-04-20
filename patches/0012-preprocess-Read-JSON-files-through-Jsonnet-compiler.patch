@@ -40,10 +40,10 @@ index 6cad73eb..50a6aa6a 100644
    , "deps":
      [ "git_tree"
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index f01c7815..abacfe77 100644
+index c9b78e98..b7b88b61 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -524,7 +524,7 @@ void SetupRetryConfig(RetryArguments const& args) {
+@@ -502,7 +502,7 @@ void SetupFileChunker() {
          Logger::Log(LogLevel::Error, "Expected file at {}.", target_file);
          std::exit(kExitFailure);
      }

@@ -8,7 +8,7 @@ Subject: [targets] export: Support doc for flexible_config
  2 files changed, 42 insertions(+), 4 deletions(-)
 
 diff --git a/src/buildtool/build_engine/target_map/export.cpp b/src/buildtool/build_engine/target_map/export.cpp
-index 7142bfa8..50a5679d 100644
+index e0bc36c3..582df61b 100644
 --- a/src/buildtool/build_engine/target_map/export.cpp
 +++ b/src/buildtool/build_engine/target_map/export.cpp
 @@ -14,8 +14,11 @@
@@ -21,9 +21,9 @@ index 7142bfa8..50a5679d 100644
  #include <utility>  // std::move
 +#include <vector>
  
+ #include "nlohmann/json.hpp"
  #include "src/buildtool/build_engine/base_maps/field_reader.hpp"
- #include "src/buildtool/build_engine/expression/configuration.hpp"
-@@ -109,7 +112,23 @@ void ExportRule(
+@@ -111,7 +114,23 @@ void ExportRule(
      const gsl::not_null<BuildMaps::Target::ResultTargetMap*> result_map) {
      auto desc = BuildMaps::Base::FieldReader::CreatePtr(
          desc_json, key.target, "export target", logger);

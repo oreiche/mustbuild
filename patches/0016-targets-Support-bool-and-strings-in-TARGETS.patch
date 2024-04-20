@@ -9,7 +9,7 @@ Subject: [targets] Support bool and strings in TARGETS
  2 files changed, 26 insertions(+)
 
 diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
-index 3a3dd5ee..b81a961b 100644
+index a4a08c40..ccafb248 100644
 --- a/src/buildtool/build_engine/target_map/target_map.cpp
 +++ b/src/buildtool/build_engine/target_map/target_map.cpp
 @@ -438,6 +438,17 @@ void withDependencies(

@@ -6,14 +6,14 @@ Subject: [preprocess] Add subcommand 'preprocess'
  share/man/must-backend.5.md       | 22 +++++++++---
  share/man/must.1.md               |  2 +-
  src/buildtool/common/cli.hpp      | 16 +++++++++
- src/buildtool/main/cli.cpp        | 15 +++++++++
+ src/buildtool/main/cli.cpp        | 17 ++++++++++
  src/buildtool/main/cli.hpp        |  4 ++-
  src/buildtool/main/main.cpp       | 56 +++++++++++++++++++++++++++++--
  src/other_tools/just_mr/utils.hpp | 11 +++++-
- 7 files changed, 116 insertions(+), 10 deletions(-)
+ 7 files changed, 118 insertions(+), 10 deletions(-)
 
 diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
-index a4d74d56..d7bc8bd3 100644
+index 5d2637f6..3d07e3d2 100644
 --- a/share/man/must-backend.5.md
 +++ b/share/man/must-backend.5.md
 @@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
@@ -72,7 +72,7 @@ index a4d74d56..d7bc8bd3 100644
  
  **`--expression-log-limit`** *`NUM`*  
  In error messages, truncate the entries in the enumeration of the active
-@@ -506,6 +513,11 @@ Ensure that all installed artifacts are available in local CAS as well,
+@@ -517,6 +524,11 @@ Ensure that all installed artifacts are available in local CAS as well,
  even when using remote execution.  
  Supported by: install|traverse|install-cas.
  
@@ -85,7 +85,7 @@ index a4d74d56..d7bc8bd3 100644
  -------------------
  
 diff --git a/share/man/must.1.md b/share/man/must.1.md
-index e349c0da..7c0c0f76 100644
+index b87fb26a..4e8cdb29 100644
 --- a/share/man/must.1.md
 +++ b/share/man/must.1.md
 @@ -12,7 +12,7 @@ SYNOPSIS
@@ -98,10 +98,10 @@ index e349c0da..7c0c0f76 100644
  DESCRIPTION
  ===========
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index e7ff4914..08aa73e7 100644
+index 125d5000..6dcb74ab 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -196,6 +196,11 @@ struct ToAddArguments {
+@@ -191,6 +191,11 @@ struct ToAddArguments {
      bool follow_symlinks{};
  };
  
@@ -128,14 +128,14 @@ index e7ff4914..08aa73e7 100644
 +        "File root (Default: workspace root of file or cwd if stdin)");
 +}
 +
- static inline void SetupRetryArguments(
-     gsl::not_null<CLI::App*> const& app,
-     gsl::not_null<RetryArguments*> const& args) {
+ static inline void SetupGcArguments(gsl::not_null<CLI::App*> const& app,
+                                     gsl::not_null<GcArguments*> const& args) {
+     app->add_flag("--no-rotate",
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index 1bade4dd..f1e1e8b0 100644
+index 4dac1b66..b17730d0 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
-@@ -167,6 +167,15 @@ auto SetupServeServiceCommandArguments(
+@@ -169,6 +169,15 @@ auto SetupServeServiceCommandArguments(
      SetupServeArguments(app, &clargs->serve);
  }
  
@@ -151,7 +151,7 @@ index 1bade4dd..f1e1e8b0 100644
  }  // namespace
  
  void CreateJustSubcommands(CLI::App& app) {
-@@ -191,6 +200,8 @@ void CreateJustSubcommands(CLI::App& app) {
+@@ -193,6 +202,8 @@ void CreateJustSubcommands(CLI::App& app) {
          "execute", "Start single node execution service on this machine.");
      auto* cmd_serve =
          app.add_subcommand("serve", "Provide target dependencies for a build.");
@@ -160,7 +160,23 @@ index 1bade4dd..f1e1e8b0 100644
      auto* cmd_traverse =
          app.group("")  // group for creating hidden options
              ->add_subcommand("traverse",
-@@ -244,6 +255,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -211,6 +222,7 @@ void CreateJustSubcommands(CLI::App& app) {
+     std::ignore = cmd_gc;
+     std::ignore = cmd_execution;
+     std::ignore = cmd_serve;
++    std::ignore = cmd_preprocess;
+ }
+ 
+ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -231,6 +243,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+     auto cmd_gc = app.get_subcommand("gc");
+     auto cmd_execution = app.get_subcommand("execute");
+     auto cmd_serve = app.get_subcommand("serve");
++    auto cmd_preprocess = app.get_subcommand("preprocess");
+ 
+     CommandLineArguments clargs;
+     SetupDescribeCommandArguments(cmd_describe, &clargs);
+@@ -244,6 +257,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
      SetupGcCommandArguments(cmd_gc, &clargs);
      SetupExecutionServiceCommandArguments(cmd_execution, &clargs);
      SetupServeServiceCommandArguments(cmd_serve, &clargs);
@@ -168,7 +184,7 @@ index 1bade4dd..f1e1e8b0 100644
      try {
          app.parse(argc, argv);
      } catch (CLI::Error& e) {
-@@ -289,6 +301,9 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -289,6 +303,9 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
      else if (*cmd_serve) {
          clargs.cmd = SubCommand::kServe;
      }
@@ -201,10 +217,10 @@ index 5b287fa1..ea71dca9 100644
      GcArguments gc;
      ToAddArguments to_add;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index abacfe77..cda44536 100644
+index b7b88b61..98cdb53d 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -557,11 +557,12 @@ void SetupRetryConfig(RetryArguments const& args) {
+@@ -535,11 +535,12 @@ void SetupFileChunker() {
          .config = std::move(config)};
  }
  
@@ -219,7 +235,7 @@ index abacfe77..cda44536 100644
      } catch (std::exception const& e) {
          Logger::Log(LogLevel::Warning,
                      "Failed to determine current working directory ({})",
-@@ -899,6 +900,57 @@ auto main(int argc, char* argv[]) -> int {
+@@ -877,6 +878,57 @@ auto main(int argc, char* argv[]) -> int {
              return kExitSuccess;
          }
  
