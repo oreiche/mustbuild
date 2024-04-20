@@ -7,7 +7,7 @@ Subject: [misc] Use user's cache for non-package bootstrap
  1 file changed, 14 insertions(+), 2 deletions(-)
 
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 2ddcf45d..37addcb4 100755
+index 673b6f65..4ba38c8a 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -85,7 +85,8 @@ if 'LOCALBASE' in os.environ:

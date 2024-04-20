@@ -4,7 +4,7 @@ Subject: [must] Build single binary for all subcommands
 
 ---
  TARGETS                                       |  66 +--
- bin/bootstrap.py                              |  14 +-
+ bin/bootstrap.py                              |  16 +-
  bin/just-deduplicate-repos.py                 | 222 ----------
  bin/just-import-git.py                        | 389 ------------------
  etc/repos.json                                |   4 +-
@@ -33,7 +33,7 @@ Subject: [must] Build single binary for all subcommands
  src/other_tools/just_mr/setup.cpp             |   3 +-
  src/other_tools/just_mr/setup_utils.cpp       |   3 +-
  src/other_tools/just_mr/utils.hpp             |  40 +-
- 30 files changed, 425 insertions(+), 1236 deletions(-)
+ 30 files changed, 426 insertions(+), 1237 deletions(-)
  delete mode 100755 bin/just-deduplicate-repos.py
  delete mode 100755 bin/just-import-git.py
  delete mode 100644 share/man/just-deduplicate-repos.1.md
@@ -141,7 +141,7 @@ index 9e8d2f82..44bb5f74 100644
      { "type": "let*"
      , "bindings":
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 3f6e72c8..2ddcf45d 100755
+index 3f6e72c8..d0020354 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -38,10 +38,10 @@ DEBUG = os.environ.get("DEBUG")
@@ -158,7 +158,14 @@ index 3f6e72c8..2ddcf45d 100755
  
  # architecture related configuration (global variables)
  g_CONF: Json = {}
-@@ -439,12 +439,12 @@ def bootstrap() -> None:
+@@ -433,18 +433,18 @@ def bootstrap() -> None:
+                 "-c", f, "-o", obj_file_name
+             ]
+             ts.submit(run, cmd, cwd=src_wrkdir)
+-    bootstrap_just: str = os.path.join(cast(str, g_WRKDIR), "bootstrap-just")
++    bootstrap_just: str = os.path.join(cast(str, g_WRKDIR), "bootstrap-must")
+     final_cmd: List[str] = BOOTSTRAP_CC + g_FINAL_LDFLAGS + [
+         "-o", bootstrap_just
      ] + object_files + dep_flags["link"]
      run(final_cmd, cwd=src_wrkdir)
      CONF_FILE: str = os.path.join(cast(str, g_WRKDIR), "repo-conf.json")

@@ -3,6 +3,7 @@ Date: Sun, 24 Dec 2023 11:29:36 +0100
 Subject: [progress] Reporter: Add interactive reporting
 
 ---
+ bin/bootstrap.py                              |   2 +-
  src/buildtool/common/cli.hpp                  |  22 ++-
  src/buildtool/common/clidefaults.hpp          |   3 +
  src/buildtool/main/main.cpp                   |   6 +-
@@ -13,8 +14,21 @@ Subject: [progress] Reporter: Add interactive reporting
  .../progress_reporting/progress_reporter.hpp  |   5 +-
  src/other_tools/just_mr/cli.hpp               |  24 +++-
  src/other_tools/just_mr/launch.cpp            |  14 ++
- 10 files changed, 203 insertions(+), 17 deletions(-)
+ 11 files changed, 204 insertions(+), 18 deletions(-)
 
+diff --git a/bin/bootstrap.py b/bin/bootstrap.py
+index d0020354..673b6f65 100755
+--- a/bin/bootstrap.py
++++ b/bin/bootstrap.py
+@@ -469,7 +469,7 @@ def bootstrap() -> None:
+     run([
+         "./out-boot/%s" %
+         (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",
+-        "-D", CONF_STRING, "-o", OUT, MAIN_MODULE, MAIN_TARGET
++        "-D", CONF_STRING, "--plain-log", "-o", OUT, MAIN_MODULE, MAIN_TARGET
+     ],
+         cwd=src_wrkdir)
+ 
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
 index eded8112..125d5000 100644
 --- a/src/buildtool/common/cli.hpp
