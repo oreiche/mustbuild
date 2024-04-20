@@ -46,7 +46,7 @@ index 44bb5f74..cae04b3d 100644
    { "type": "configure"
    , "target": ["@", "libgit2", "", "git2"]
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 37addcb4..711c0f14 100755
+index 4ba38c8a..6090fa63 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -34,6 +34,8 @@ Json = Dict[str, Any]
@@ -62,8 +62,8 @@ index 37addcb4..711c0f14 100755
      run([
          "./out-boot/%s" %
          (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",
--        "-D", CONF_STRING, "-o", OUT, MAIN_MODULE, MAIN_TARGET
-+        "-D", CONF_STRING, "-o", OUT, BOOTSTRAP_MODULE, BOOTSTRAP_TARGET
+-        "-D", CONF_STRING, "--plain-log", "-o", OUT, MAIN_MODULE, MAIN_TARGET
++        "-D", CONF_STRING, "--plain-log", "-o", OUT, BOOTSTRAP_MODULE, BOOTSTRAP_TARGET
      ],
          cwd=src_wrkdir)
  

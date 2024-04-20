@@ -16,7 +16,7 @@ Subject: [verbose] Logger: Add LogLevel::Verbose
  9 files changed, 31 insertions(+), 18 deletions(-)
 
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index 31ef2a5e..02d0848f 100644
+index 26ce3183..b78be851 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
 @@ -604,7 +604,7 @@ class ExecutorImpl {
@@ -29,10 +29,10 @@ index 31ef2a5e..02d0848f 100644
      }
  
 diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
-index da516dfd..0a886b0f 100644
+index 93aa235f..f496e10b 100644
 --- a/src/buildtool/graph_traverser/graph_traverser.hpp
 +++ b/src/buildtool/graph_traverser/graph_traverser.hpp
-@@ -644,7 +644,7 @@ class GraphTraverser {
+@@ -645,7 +645,7 @@ class GraphTraverser {
          std::vector<DependencyGraph::ArtifactNode const*> const& artifact_nodes,
          std::map<std::string, ArtifactDescription> const& runfiles) const {
          std::string msg_dbg{"Artifact ids:"};
@@ -41,7 +41,7 @@ index da516dfd..0a886b0f 100644
          bool failed{false};
          nlohmann::json json{};
          for (std::size_t pos = 0; pos < paths.size(); ++pos) {
-@@ -685,7 +685,7 @@ class GraphTraverser {
+@@ -686,7 +686,7 @@ class GraphTraverser {
          Logger::Log(logger_, LogLevel::Info, "{}", message);
          Logger::Log(logger_, LogLevel::Debug, "{}", msg_dbg);
          if (failed) {
@@ -50,7 +50,7 @@ index da516dfd..0a886b0f 100644
          }
  
          if (clargs_.build.dump_artifacts) {
-@@ -740,7 +740,7 @@ class GraphTraverser {
+@@ -741,7 +741,7 @@ class GraphTraverser {
                  if ((not relpath.empty()) and *relpath.begin() != "..") {
                      Logger::Log(
                          logger_,
@@ -95,10 +95,10 @@ index 5c2e07e1..2a2dfac8 100644
                      style = fg(fmt::color::sky_blue);
                      break;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index cda44536..e55a4737 100644
+index 98cdb53d..196ab6c4 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -674,6 +674,9 @@ auto DetermineRoots(gsl::not_null<RepositoryConfig*> const& repository_config,
+@@ -652,6 +652,9 @@ auto DetermineRoots(gsl::not_null<RepositoryConfig*> const& repository_config,
              }
              if (main_ws_root.has_value()) {
                  ws_root = FileRoot{*main_ws_root};
@@ -108,7 +108,7 @@ index cda44536..e55a4737 100644
              }
          }
          if (not ws_root) {
-@@ -768,7 +771,8 @@ auto DetermineRoots(gsl::not_null<RepositoryConfig*> const& repository_config,
+@@ -746,7 +749,8 @@ auto DetermineRoots(gsl::not_null<RepositoryConfig*> const& repository_config,
      return {main_repo, main_ws_root};
  }
  
@@ -118,7 +118,7 @@ index cda44536..e55a4737 100644
      if (result.target->Tainted().empty()) {
          // Never report untainted targets
          return;
-@@ -779,7 +783,7 @@ void ReportTaintedness(const AnalysisResult& result) {
+@@ -757,7 +761,7 @@ void ReportTaintedness(const AnalysisResult& result) {
      for (auto const& s : result.target->Tainted()) {
          tainted.push_back(s);
      }
@@ -127,7 +127,7 @@ index cda44536..e55a4737 100644
  }
  
  auto DetermineNonExplicitTarget(
-@@ -1111,7 +1115,7 @@ auto main(int argc, char* argv[]) -> int {
+@@ -1113,7 +1117,7 @@ auto main(int argc, char* argv[]) -> int {
                      return kExitSuccess;
                  }
  #ifndef BOOTSTRAP_BUILD_TOOL
@@ -136,7 +136,7 @@ index cda44536..e55a4737 100644
                              "Analysed target {}",
                              result->id.ToString());
  
-@@ -1122,7 +1126,7 @@ auto main(int argc, char* argv[]) -> int {
+@@ -1124,7 +1128,7 @@ auto main(int argc, char* argv[]) -> int {
                      auto not_eligible = stats.ExportsNotEligibleCounter();
                      Logger::Log(
                          served + cached + uncached + not_eligible > 0
@@ -145,7 +145,7 @@ index cda44536..e55a4737 100644
                              : LogLevel::Debug,
                          "Export targets found: {} cached, {}{} uncached, "
                          "{} not eligible for caching",
-@@ -1147,7 +1151,7 @@ auto main(int argc, char* argv[]) -> int {
+@@ -1149,7 +1153,7 @@ auto main(int argc, char* argv[]) -> int {
                  }
  
                  Logger::Log(
@@ -154,7 +154,7 @@ index cda44536..e55a4737 100644
                      "{}ing{} {}.",
                      arguments.cmd == SubCommand::kRebuild ? "Rebuild" : "Build",
                      result->modified ? fmt::format(" input of action {} of",
-@@ -1173,11 +1177,7 @@ auto main(int argc, char* argv[]) -> int {
+@@ -1175,11 +1179,7 @@ auto main(int argc, char* argv[]) -> int {
  
                      // Repeat taintedness message to make the user aware that
                      // the artifacts are not for production use.
@@ -180,10 +180,10 @@ index 30ca8935..ca3172c2 100644
          });
  }
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index 35716ebb..ca625703 100644
+index 25e8656a..fd3bbb24 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
-@@ -233,8 +233,9 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -247,8 +247,9 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
          cmd.emplace_back(*it);
      }
  
@@ -196,10 +196,10 @@ index 35716ebb..ca625703 100644
      // create argv
      std::vector<char*> argv{};
 diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
-index d2fe1285..4de093de 100644
+index d4f08290..f37a4e5b 100644
 --- a/src/other_tools/just_mr/main.cpp
 +++ b/src/other_tools/just_mr/main.cpp
-@@ -223,6 +223,12 @@ auto main(int argc, char* argv[]) -> int {
+@@ -226,6 +226,12 @@ auto main(int argc, char* argv[]) -> int {
          }
  
          SetupLogging(arguments.log);

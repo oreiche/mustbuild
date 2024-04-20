@@ -16,4 +16,4 @@ readonly PATCHDIR="${ROOT}/patches"
 git show patches:src/jsonnet/builtins.libsonnet \
   | sed -n 's|^///\ \?\(.*\)|\1|p' > "${ROOT}/doc/must-lang.md"
 
-echo "${BASE_COMMIT}" > justbuild.commit
+echo "${BASE_COMMIT}" > ${ROOT}/justbuild.commit
