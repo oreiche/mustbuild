@@ -22,7 +22,7 @@ rm -rf "${WORKDIR}"
 # obtain time stamp from git commit
 readonly COMMIT_HASH=$(git rev-parse ${REF})
 readonly SOURCE_DATE_EPOCH=$(git log -n1 --format=%ct ${COMMIT_HASH})
-readonly GIT_VERSION_SUFFIX="+g$(git log -n1 --format=%h ${COMMIT_HASH})"
+readonly GIT_VERSION_SUFFIX="+g$(git rev-parse --short=8 ${COMMIT_HASH})"
 
 # obtain snapshot of sources
 mkdir -p "${TEMPDIR}"
