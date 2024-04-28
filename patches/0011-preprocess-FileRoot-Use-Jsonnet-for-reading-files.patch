@@ -26,7 +26,7 @@ index 3d194b96..c3bd22b8 100644
      , ["", "libcurl"]
      , ["", "libarchive"]
 diff --git a/etc/repos.json b/etc/repos.json
-index 11fa1894..e6596308 100644
+index 551eda17..6a973017 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -16,6 +16,7 @@

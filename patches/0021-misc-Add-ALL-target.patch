@@ -9,7 +9,7 @@ Subject: [misc] Add ALL target
  2 files changed, 29 insertions(+), 1 deletion(-)
 
 diff --git a/TARGETS b/TARGETS
-index 44bb5f74..cae04b3d 100644
+index 682d0745..8a3fee97 100644
 --- a/TARGETS
 +++ b/TARGETS
 @@ -115,6 +115,32 @@

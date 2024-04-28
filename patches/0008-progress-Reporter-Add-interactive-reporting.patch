@@ -30,7 +30,7 @@ index d0020354..673b6f65 100755
          cwd=src_wrkdir)
  
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index eded8112..125d5000 100644
+index 57567cf7..76a8a9d0 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
 @@ -53,6 +53,8 @@ struct LogArguments {
@@ -42,7 +42,7 @@ index eded8112..125d5000 100644
  };
  
  /// \brief Arguments required for analysing targets.
-@@ -255,13 +257,27 @@ static inline auto SetupLogArguments(
+@@ -256,13 +258,27 @@ static inline auto SetupLogArguments(
             "Restrict logging on console to the minimum of the specified "
             "--log-limit and this value")
          ->type_name("NUM");

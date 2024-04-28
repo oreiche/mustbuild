@@ -13,7 +13,7 @@ Subject: [preprocess] Add subcommand 'preprocess'
  7 files changed, 118 insertions(+), 10 deletions(-)
 
 diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
-index 5d2637f6..3d07e3d2 100644
+index 774ccfaf..725d9e28 100644
 --- a/share/man/must-backend.5.md
 +++ b/share/man/must-backend.5.md
 @@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
@@ -98,10 +98,10 @@ index b87fb26a..4e8cdb29 100644
  DESCRIPTION
  ===========
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index 125d5000..6dcb74ab 100644
+index 76a8a9d0..4ba9426d 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -191,6 +191,11 @@ struct ToAddArguments {
+@@ -192,6 +192,11 @@ struct ToAddArguments {
      bool follow_symlinks{};
  };
  
@@ -113,7 +113,7 @@ index 125d5000..6dcb74ab 100644
  static inline auto SetupCommonArguments(
      gsl::not_null<CLI::App*> const& app,
      gsl::not_null<CommonArguments*> const& clargs) {
-@@ -771,6 +776,17 @@ static inline auto SetupServeArguments(
+@@ -776,6 +781,17 @@ static inline auto SetupServeArguments(
          ->required();
  }
  
@@ -132,10 +132,10 @@ index 125d5000..6dcb74ab 100644
                                      gsl::not_null<GcArguments*> const& args) {
      app->add_flag("--no-rotate",
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index 4dac1b66..b17730d0 100644
+index d38c1d30..eac04f3d 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
-@@ -169,6 +169,15 @@ auto SetupServeServiceCommandArguments(
+@@ -170,6 +170,15 @@ auto SetupServeServiceCommandArguments(
      SetupServeArguments(app, &clargs->serve);
  }
  
@@ -151,7 +151,7 @@ index 4dac1b66..b17730d0 100644
  }  // namespace
  
  void CreateJustSubcommands(CLI::App& app) {
-@@ -193,6 +202,8 @@ void CreateJustSubcommands(CLI::App& app) {
+@@ -194,6 +203,8 @@ void CreateJustSubcommands(CLI::App& app) {
          "execute", "Start single node execution service on this machine.");
      auto* cmd_serve =
          app.add_subcommand("serve", "Provide target dependencies for a build.");
@@ -160,7 +160,7 @@ index 4dac1b66..b17730d0 100644
      auto* cmd_traverse =
          app.group("")  // group for creating hidden options
              ->add_subcommand("traverse",
-@@ -211,6 +222,7 @@ void CreateJustSubcommands(CLI::App& app) {
+@@ -212,6 +223,7 @@ void CreateJustSubcommands(CLI::App& app) {
      std::ignore = cmd_gc;
      std::ignore = cmd_execution;
      std::ignore = cmd_serve;
@@ -168,7 +168,7 @@ index 4dac1b66..b17730d0 100644
  }
  
  auto ParseCommandLineArguments(int argc, char const* const* argv)
-@@ -231,6 +243,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -232,6 +244,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
      auto cmd_gc = app.get_subcommand("gc");
      auto cmd_execution = app.get_subcommand("execute");
      auto cmd_serve = app.get_subcommand("serve");
@@ -176,7 +176,7 @@ index 4dac1b66..b17730d0 100644
  
      CommandLineArguments clargs;
      SetupDescribeCommandArguments(cmd_describe, &clargs);
-@@ -244,6 +257,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -245,6 +258,7 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
      SetupGcCommandArguments(cmd_gc, &clargs);
      SetupExecutionServiceCommandArguments(cmd_execution, &clargs);
      SetupServeServiceCommandArguments(cmd_serve, &clargs);
@@ -184,7 +184,7 @@ index 4dac1b66..b17730d0 100644
      try {
          app.parse(argc, argv);
      } catch (CLI::Error& e) {
-@@ -289,6 +303,9 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -290,6 +304,9 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
      else if (*cmd_serve) {
          clargs.cmd = SubCommand::kServe;
      }
@@ -294,10 +294,10 @@ index b7b88b61..98cdb53d 100644
          // serve endpoint, if given
          if (not RemoteExecutionConfig::RemoteAddress() and
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
-index d4675821..0f294f58 100644
+index 6963b068..895cc402 100644
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
-@@ -150,7 +150,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+@@ -147,7 +147,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
        .remote = true,
        .remote_props = true,
        .serve = false,
