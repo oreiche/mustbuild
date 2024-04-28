@@ -76,7 +76,7 @@ You can find the compile flags for this project in
 defaults: {
   type: ref('CC', 'defaults'),
   // We want to read variable 'DEBUG'.
-  arguments_config: ['DEBUG'],
+  arguments_config: 'DEBUG',
   // Inherit flags from toolchain settings (see etc/toolchain/CC/TARGETS).
   base: [ref_ext('toolchain', 'CC', 'defaults')],
   // Set flags for C and C++ (additional to flags from toolchain settings)
@@ -111,7 +111,7 @@ the `defaults` target using the rule
 ```jsonnet
 defaults: {
   type: ref('CC', 'defaults'),
-  arguments_config: ['TOOLCHAIN_CONFIG'],
+  arguments_config: 'TOOLCHAIN_CONFIG',
   base:
     // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('generic' if unset)
     //   'generic' -> target generic

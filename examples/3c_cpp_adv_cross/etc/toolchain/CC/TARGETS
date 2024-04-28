@@ -11,7 +11,7 @@ local _cross_defaults = {
   // Main dispatch target
   defaults: {
     type: ref('CC', 'defaults'),
-    arguments_config: ['TARGET_ARCH'],
+    arguments_config: 'TARGET_ARCH',
     // Inherit from 'cross_toolchain' if 'TARGET_ARCH' is set.
     base: [select(var('TARGET_ARCH'), 'cross_toolchain', 'native_toolchain')],
   },
@@ -19,7 +19,7 @@ local _cross_defaults = {
   // Dispatch target for native toolchains
   native_toolchain: {
     type: ref('CC', 'defaults'),
-    arguments_config: ['TOOLCHAIN_CONFIG'],
+    arguments_config: 'TOOLCHAIN_CONFIG',
     base:
       // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('generic' if unset)
       //   'generic' -> target generic
@@ -66,7 +66,7 @@ local _cross_defaults = {
   // Dispatch target for cross toolchains
   cross_toolchain: {
     type: ref('CC', 'defaults'),
-    arguments_config: ['TOOLCHAIN_CONFIG'],
+    arguments_config: 'TOOLCHAIN_CONFIG',
     base:
       // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('gnu' if unset)
       //   'gnu'   -> target gcc

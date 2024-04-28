@@ -23,8 +23,8 @@ In an empty directory, create a file named `TARGETS` with the following content:
   // Target 'helloworld' based on built-in rule 'generic'
   helloworld: {
     type: 'generic',
-    cmds: ['echo Hello World > out.txt'],
-    outs: ['out.txt'],
+    cmds: 'echo Hello World > out.txt',
+    outs: 'out.txt',
   },
 }
 ```

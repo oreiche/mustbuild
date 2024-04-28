@@ -23,7 +23,7 @@ dispatch target `cross_toolchain`.
 // Dispatch target for cross toolchains
 cross_toolchain: {
   type: ref('CC', 'defaults'),
-  arguments_config: ['TOOLCHAIN_CONFIG'],
+  arguments_config: 'TOOLCHAIN_CONFIG',
   base:
     // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('gnu' if unset)
     //   'gnu'   -> target gcc

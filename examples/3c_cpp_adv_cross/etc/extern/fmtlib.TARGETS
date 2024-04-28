@@ -5,7 +5,7 @@
     // Use rule ["CC", "library"] from binding "rules"
     type: ref_ext('rules', 'CC', 'library'),
     // We want to read variable 'DEBUG'.
-    arguments_config: ['DEBUG'],
+    arguments_config: 'DEBUG',
     // Library name: libfmt.a
     name: 'fmt',
     // Library type: static

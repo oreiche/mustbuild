@@ -28,8 +28,8 @@ rule `generic`. It is defined in the file [TARGETS](./TARGETS).
 ```jsonnet
 simple_greeter: {
   type: 'generic',
-  cmds: ['printf "Hello World\n" > out.txt'],
-  outs: ['out.txt'],
+  cmds: 'printf "Hello World\n" > out.txt',
+  outs: 'out.txt',
 },
 ```
 
@@ -84,13 +84,13 @@ which converts multi-line strings to string lists.
 ```jsonnet
 file_greeter: {
   type: 'generic',
-  // Field 'cmds' expects list of strings, the commands.
-  // -> Function 'lines()' generates list of strings from multi-line string.
-  cmds: lines(|||
+  // Field 'cmds' expects list of strings or newline separated string.
+  // -> Jsonnet multi-line string generates newline separated string.
+  cmds: |||
     printf "Hello " > out.txt
     cat name.txt >> out.txt
-  |||),
-  outs: ['out.txt'],
+  |||,
+  outs: 'out.txt',
   deps: ['name.txt'],
 },
 ```
@@ -116,11 +116,11 @@ output of the depending target `input.txt`.
 ```jsonnet
 input_greeter: {
   type: 'generic',
-  cmds: lines(|||
+  cmds: |||
     printf "Hello " > out.txt
     cat input.txt >> out.txt
-  |||),
-  outs: ['out.txt'],
+  |||,
+  outs: 'out.txt',
   // Dependency 'input.txt' is a target (see below), not a file!
   deps: ['input.txt'],
 },
@@ -160,7 +160,7 @@ for `data` is read from the variable `INPUT_STRING`, which defaults to string
 'input.txt': {
   type: 'file_gen',
   // We want to read variable 'INPUT_STRING'.
-  arguments_config: ['INPUT_STRING'],
+  arguments_config: 'INPUT_STRING',
   name: 'input.txt',
   // Use content of variable 'INPUT_STRING' if set, or else use 'Universe\n'
   data: var('INPUT_STRING', default='Universe\n'),
