@@ -4,7 +4,7 @@
     // Use rule ["CC", "library"] from binding "rules"
     type: ref_ext('rules', 'CC', 'library'),
     // Use variable 'BUILD_SHARED'
-    arguments_config: ['BUILD_SHARED'],
+    arguments_config: 'BUILD_SHARED',
     // Library name: "libgreet.{a,so}"
     name: 'greet',
     // Library type: static or shared (depends on 'BUILD_SHARED')

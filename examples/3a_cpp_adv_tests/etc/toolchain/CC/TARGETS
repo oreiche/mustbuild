@@ -5,7 +5,7 @@ local _utils = import 'utils.libsonnet';
   // Main dispatch target
   defaults: {
     type: ref('CC', 'defaults'),
-    arguments_config: ['TOOLCHAIN_CONFIG'],
+    arguments_config: 'TOOLCHAIN_CONFIG',
     base:
       // Dispatch on TOOLCHAIN_CONFIG['FAMILY'] ('generic' if unset)
       //   'generic' -> target generic

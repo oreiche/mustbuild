@@ -25,7 +25,7 @@ local _cxxflags_rel = _release + _cxxflags;
   defaults: {
     type: ref('CC', 'defaults'),
     // We want to read variable 'DEBUG'.
-    arguments_config: ['DEBUG'],
+    arguments_config: 'DEBUG',
     // Inherit flags from toolchain settings (see etc/toolchain/CC/TARGETS).
     base: [ref_ext('toolchain', 'CC', 'defaults')],
     // Set flags for C and C++ (additional to flags from toolchain settings)

@@ -213,10 +213,10 @@ index d4f08290..f37a4e5b 100644
          // As the rc file can contain logging parameters, reset the logging
          // configuration
 diff --git a/src/other_tools/just_mr/setup.cpp b/src/other_tools/just_mr/setup.cpp
-index eb6aee77..47a9beb9 100644
+index 4c3dd31c..83f77948 100644
 --- a/src/other_tools/just_mr/setup.cpp
 +++ b/src/other_tools/just_mr/setup.cpp
-@@ -48,7 +48,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
+@@ -52,7 +52,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
                      std::string multi_repo_tool_name)
      -> std::optional<std::filesystem::path> {
      // provide report

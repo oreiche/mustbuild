@@ -69,7 +69,7 @@ fmt: {
   // Use rule ["CC", "library"] from binding "rules"
   type: ref_ext('rules', 'CC', 'library'),
   // We want to read variable 'DEBUG'.
-  arguments_config: ['DEBUG'],
+  arguments_config: 'DEBUG',
   // Library name: libfmt.a
   name: 'fmt',
   // Library type: static
@@ -146,7 +146,7 @@ gtest_main: {
   // Use rule ["CC/foreign/cmake", "library"] from binding "rules"
   type: ref_ext('rules', 'CC/foreign/cmake', 'library'),
   // We want to read variable 'DEBUG'.
-  arguments_config: ['DEBUG'],
+  arguments_config: 'DEBUG',
   // Library name
   name: 'gtest_main',
   // Project directory (includes CMakeLists.txt)
@@ -154,7 +154,7 @@ gtest_main: {
   // CMake defines (-Dxxx)
   defines: _gtest_defines('DEBUG'),
   // Produced library files
-  out_libs: ['libgtest_main.a'],
+  out_libs: 'libgtest_main.a',
   // Dependencies
   deps: ['gtest'],
 },

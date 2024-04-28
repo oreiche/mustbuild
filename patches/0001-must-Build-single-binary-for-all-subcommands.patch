@@ -5,19 +5,20 @@ Subject: [must] Build single binary for all subcommands
 ---
  TARGETS                                       |  66 +--
  bin/bootstrap.py                              |  16 +-
- bin/just-deduplicate-repos.py                 | 222 ----------
- bin/just-import-git.py                        | 389 ------------------
+ bin/just-deduplicate-repos.py                 | 261 ------------
+ bin/just-import-git.py                        | 397 ------------------
  etc/repos.json                                |   4 +-
  share/man/just-deduplicate-repos.1.md         |  84 ----
- share/man/just-import-git.1.md                | 108 -----
+ share/man/just-import-git.1.md                | 111 -----
  ...y-config.5.md => must-backend-config.5.md} |  18 +-
  share/man/{just.1.md => must-backend.5.md}    |  77 ++--
  ...t-graph-file.5.md => must-graph-file.5.md} |   8 +-
  ...onfig.5.md => must-repository-config.5.md} |  28 +-
- ...rve-config.5.md => must-serve-config.5.md} |  20 +-
+ ...rve-config.5.md => must-serve-config.5.md} |  28 +-
  share/man/{just-mr.1.md => must.1.md}         | 157 ++++---
- share/man/{just-mrrc.5.md => mustrc.5.md}     |  93 ++---
+ share/man/{just-mrrc.5.md => mustrc.5.md}     |  93 ++--
  ...{just_complete.bash => must_complete.bash} |  60 ++-
+ src/buildtool/common/location.cpp             |   2 +-
  .../execution_engine/executor/executor.hpp    |   3 +
  src/buildtool/main/TARGETS                    |  24 +-
  src/buildtool/main/cli.cpp                    |  41 +-
@@ -28,12 +29,12 @@ Subject: [must] Build single binary for all subcommands
  src/other_tools/just_mr/cli.hpp               |  18 +-
  src/other_tools/just_mr/launch.cpp            |  55 ++-
  src/other_tools/just_mr/main.cpp              |  51 ++-
- src/other_tools/just_mr/rc.cpp                |  40 +-
+ src/other_tools/just_mr/rc.cpp                |  36 +-
  src/other_tools/just_mr/rc.hpp                |   2 +-
  src/other_tools/just_mr/setup.cpp             |   3 +-
  src/other_tools/just_mr/setup_utils.cpp       |   3 +-
  src/other_tools/just_mr/utils.hpp             |  40 +-
- 30 files changed, 426 insertions(+), 1237 deletions(-)
+ 31 files changed, 432 insertions(+), 1287 deletions(-)
  delete mode 100755 bin/just-deduplicate-repos.py
  delete mode 100755 bin/just-import-git.py
  delete mode 100644 share/man/just-deduplicate-repos.1.md
@@ -42,13 +43,13 @@ Subject: [must] Build single binary for all subcommands
  rename share/man/{just.1.md => must-backend.5.md} (93%)
  rename share/man/{just-graph-file.5.md => must-graph-file.5.md} (97%)
  rename share/man/{just-mr-repository-config.5.md => must-repository-config.5.md} (93%)
- rename share/man/{just-serve-config.5.md => must-serve-config.5.md} (93%)
+ rename share/man/{just-serve-config.5.md => must-serve-config.5.md} (89%)
  rename share/man/{just-mr.1.md => must.1.md} (68%)
  rename share/man/{just-mrrc.5.md => mustrc.5.md} (73%)
  rename share/{just_complete.bash => must_complete.bash} (79%)
 
 diff --git a/TARGETS b/TARGETS
-index 9e8d2f82..44bb5f74 100644
+index dc5f0817..682d0745 100644
 --- a/TARGETS
 +++ b/TARGETS
 @@ -1,7 +1,7 @@
@@ -193,10 +194,10 @@ index 3f6e72c8..d0020354 100755
  
 diff --git a/bin/just-deduplicate-repos.py b/bin/just-deduplicate-repos.py
 deleted file mode 100755
-index f6bf9548..00000000
+index ca4780b0..00000000
 --- a/bin/just-deduplicate-repos.py
 +++ /dev/null
-@@ -1,222 +0,0 @@
+@@ -1,261 +0,0 @@
 -#!/usr/bin/env python3
 -# Copyright 2023 Huawei Cloud Computing Technology Co., Ltd.
 -#
@@ -215,7 +216,7 @@ index f6bf9548..00000000
 -import json
 -import sys
 -
--from typing import Any, List, Optional
+-from typing import Any, Dict, List, Optional, Union, cast
 -
 -# generic JSON type
 -Json = Any
@@ -370,12 +371,49 @@ index f6bf9548..00000000
 -        return sorted(candidates,
 -                      key=lambda s: (s.count("/"), len(s), s))[0]
 -
+-    def merge_pragma(rep: str, merged: List[str]) -> Json:
+-        desc = cast(Union[str, Dict[str, Json]],
+-                    repos["repositories"][rep]["repository"])
+-        if not isinstance(desc, dict):
+-            return desc
+-        pragma = desc.get("pragma", {})
+-        # Clear pragma absent unless all merged repos that are not references
+-        # have the pragma
+-        absent = pragma.get("absent", False)
+-        for c in merged:
+-            alt_desc = cast(Union[str, Dict[str, Json]],
+-                            repos["repositories"][c]["repository"])
+-            if (isinstance(alt_desc, dict)):
+-                absent = \
+-                    absent and alt_desc.get("pragma", {}).get("absent", False)
+-        pragma = dict(pragma, **{"absent": absent})
+-        if not absent:
+-            del pragma["absent"]
+-        # Add pragma to_git if at least one of the merged repos requires it
+-        to_git = pragma.get("to_git", False)
+-        for c in merged:
+-            alt_desc = cast(Union[str, Dict[str, Json]],
+-                            repos["repositories"][c]["repository"])
+-            if (isinstance(alt_desc, dict)):
+-                to_git = \
+-                    to_git or alt_desc.get("pragma", {}).get("to_git", False)
+-        pragma = dict(pragma, **{"to_git": to_git})
+-        if not to_git:
+-            del pragma["to_git"]
+-        # Update the pragma
+-        desc = dict(desc, **{"pragma": pragma})
+-        if not pragma:
+-            del desc["pragma"]
+-        return desc
+-
 -    bisim = bisimilar_repos(repos["repositories"])
 -    renaming = {}
+-    updated_repos = {}
 -    for c in bisim:
 -        if len(c) == 1:
 -            continue
 -        rep = choose_representative(c)
+-        updated_repos[rep] = merge_pragma(rep, c)
 -        for repo in c:
 -            if ((repo not in keep) and (repo != rep)):
 -                renaming[repo] = rep
@@ -397,6 +435,8 @@ index f6bf9548..00000000
 -    for name in repos["repositories"].keys():
 -        if name not in renaming:
 -            desc = repos["repositories"][name]
+-            if name in updated_repos:
+-                desc = dict(desc, **{"repository": updated_repos[name]})
 -            if "bindings" in desc:
 -                bindings = desc["bindings"]
 -                new_bindings = {}
@@ -421,10 +461,10 @@ index f6bf9548..00000000
 -    print(json.dumps(final))
 diff --git a/bin/just-import-git.py b/bin/just-import-git.py
 deleted file mode 100755
-index c362469a..00000000
+index 7416bb7b..00000000
 --- a/bin/just-import-git.py
 +++ /dev/null
-@@ -1,389 +0,0 @@
+@@ -1,397 +0,0 @@
 -#!/usr/bin/env python3
 -# Copyright 2022 Huawei Cloud Computing Technology Co., Ltd.
 -#
@@ -654,7 +694,7 @@ index c362469a..00000000
 -
 -
 -def rewrite_repo(repo_spec: Json, *, remote: Dict[str, Any],
--                 assign: Json) -> Json:
+-                 assign: Json, absent: bool) -> Json:
 -    new_spec: Json = {}
 -    repo = repo_spec.get("repository", {})
 -    if isinstance(repo, str):
@@ -669,6 +709,8 @@ index c362469a..00000000
 -        existing_repos: List[str] = repo.get("repositories", [])
 -        new_repos = [assign[k] for k in existing_repos]
 -        repo = dict(repo, **{"repositories": new_repos})
+-    if absent and isinstance(repo, dict):
+-        repo["pragma"] = dict(repo.get("pragma", {}), **{"absent": True})
 -    new_spec["repository"] = repo
 -    for key in ["target_root", "rule_root", "expression_root"]:
 -        if key in repo_spec:
@@ -746,6 +788,7 @@ index c362469a..00000000
 -            foreign_repos[repo],
 -            remote=remote,
 -            assign=total_assign,
+-            absent=args.absent,
 -        )
 -    base_config["repositories"] = base_repos
 -    shutil.rmtree(to_cleanup)
@@ -777,6 +820,11 @@ index c362469a..00000000
 -        action="store_true",
 -        help="Pretend the remote repository description is the canonical" +
 -        " single-repository one",
+-    )
+-    parser.add_argument(
+-        "--absent",
+-        action="store_true",
+-        help="Import repository and all its dependencies as absent."
 -    )
 -    parser.add_argument(
 -        "--as",
@@ -815,7 +863,7 @@ index c362469a..00000000
 -if __name__ == "__main__":
 -    main()
 diff --git a/etc/repos.json b/etc/repos.json
-index fe706b2f..46b82226 100644
+index d339e874..6142eaf8 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -1,6 +1,6 @@
@@ -829,7 +877,7 @@ index fe706b2f..46b82226 100644
        { "rules": "rules-just"
 diff --git a/share/man/just-deduplicate-repos.1.md b/share/man/just-deduplicate-repos.1.md
 deleted file mode 100644
-index 9a87597a..00000000
+index 3edf7b80..00000000
 --- a/share/man/just-deduplicate-repos.1.md
 +++ /dev/null
 @@ -1,84 +0,0 @@
@@ -852,7 +900,7 @@ index 9a87597a..00000000
 -Read a multi-repository configuration from stdin and print to stdout
 -a repository configuration with indistinguishable repositories merged
 -to a single repository. In doing so, keep the `"main"` repository,
--as well as any repositories specified on the as arguments on
+-as well as any repositories specified as arguments on
 -the command line, even if that means that some indistinguishable
 -repositories cannot be merged into one (as both have to be kept).
 -
@@ -919,10 +967,10 @@ index 9a87597a..00000000
 -**`just-mr`**(1)
 diff --git a/share/man/just-import-git.1.md b/share/man/just-import-git.1.md
 deleted file mode 100644
-index b3eca023..00000000
+index 83eb2e6e..00000000
 --- a/share/man/just-import-git.1.md
 +++ /dev/null
-@@ -1,108 +0,0 @@
+@@ -1,111 +0,0 @@
 -% JUST-IMPORT-GIT(1) | General Commands Manual
 -
 -NAME
@@ -1007,6 +1055,9 @@ index b3eca023..00000000
 -not have a repository configuration or should be imported without
 -dependencies.
 -
+-**`--absent`**  
+-Add the pragma `{"absent": true}` to all imported repositories.
+-
 -**`--mirror`** *`URL`*  
 -Provides an alternative fetch location for the imported repository.
 -Specifying this option multiple times will accumulate URLs in the order
@@ -1088,7 +1139,7 @@ diff --git a/share/man/just.1.md b/share/man/must-backend.5.md
 similarity index 93%
 rename from share/man/just.1.md
 rename to share/man/must-backend.5.md
-index de0cf605..5d2637f6 100644
+index f4d613bf..774ccfaf 100644
 --- a/share/man/just.1.md
 +++ b/share/man/must-backend.5.md
 @@ -1,29 +1,28 @@
@@ -1256,7 +1307,7 @@ index de0cf605..5d2637f6 100644
  stderr in the log file along with the thread id and timestamp when the
  output has been generated.  
  Supported by:
-@@ -794,7 +775,7 @@ out clean up tasks that do not affect what is stored in the cache.
+@@ -799,7 +780,7 @@ out clean up tasks that do not affect what is stored in the cache.
  EXIT STATUS
  ===========
  
@@ -1265,7 +1316,7 @@ index de0cf605..5d2637f6 100644
  
   - 0: the command completed successfully
   - 1: the command could not complete due to some errors (e.g.,
-@@ -806,6 +787,6 @@ The exit status of **`just`** is one of the following values:
+@@ -811,6 +792,6 @@ The exit status of **`just`** is one of the following values:
  See also
  ========
  
@@ -1393,10 +1444,10 @@ index 90ae5055..5778b0eb 100644
 +**`must-backend`**(5),
 +**`must-backend-config`**(5)
 diff --git a/share/man/just-serve-config.5.md b/share/man/must-serve-config.5.md
-similarity index 93%
+similarity index 89%
 rename from share/man/just-serve-config.5.md
 rename to share/man/must-serve-config.5.md
-index 4f127ea4..a2561b82 100644
+index 7274d661..bdc355b8 100644
 --- a/share/man/just-serve-config.5.md
 +++ b/share/man/must-serve-config.5.md
 @@ -1,10 +1,10 @@
@@ -1413,35 +1464,41 @@ index 4f127ea4..a2561b82 100644
  
  DESCRIPTION
  ===========
-@@ -14,7 +14,7 @@ JSON object is equivalent. We assume, that in JSON objects, each key
- occurs at most once; it is implementation defined how repetitions of the
- same key are treated.
+@@ -18,11 +18,11 @@ Location objects
+ ----------------
+ 
+ The general syntax and semantics of a location object are described in 
+-**`just-mrrc`**(5). Here we use a restricted form where the value for key
++**`mustrc`**(5). Here we use a restricted form where the value for key
+ *`"root"`* can only be either *`"home"`* or *`"system"`*. This is because
+-`just serve` is not aware of the concept of workspaces.
++`must serve` is not aware of the concept of workspaces.
  
 -The just-serve configuration format
 +The must-serve configuration format
  -----------------------------------
  
  The configuration file is given by a JSON object.
-@@ -24,7 +24,7 @@ The configuration file is given by a JSON object.
-    be created if it does not exist already. 
+@@ -32,7 +32,7 @@ The configuration file is given by a JSON object.
+    directories. The path will be created if it does not exist already.
  
-  - The value for the key *`"repositories"`* is a list of strings specifying
--   paths to Git repositories for **`just`** **`serve`** to use as additional
-+   paths to Git repositories for **`must`** **`serve`** to use as additional
-    object lookup locations. The paths are to be used in the order given and
-    only if requested objects are not found in the local build root.  
+  - The value for the key *`"repositories"`* is a list of location objects,
+-   specifying paths to Git repositories for **`just`** **`serve`** to use as
++   specifying paths to Git repositories for **`must`** **`serve`** to use as
+    additional object lookup locations. The paths are to be used in the order
+    given and only if requested objects are not found in the local build root.
  
-@@ -42,7 +42,7 @@ The configuration file is given by a JSON object.
+@@ -50,7 +50,7 @@ The configuration file is given by a JSON object.
     file instead of overwriting existing.
  
    - The value for the key *`"authentication"`* is a JSON object specifying
 -   client-side authentication options for **`just`** **`serve`** when
 +   client-side authentication options for **`must`** **`serve`** when
     communicating with the remote execution endpoint.  
-    For subkey *`"ca cert"`* the value is a string specifying the path to a TLS
-    CA certificate.  
-@@ -52,7 +52,7 @@ The configuration file is given by a JSON object.
-    TLS client key.  
+    For subkey *`"ca cert"`* the value is a single location object, specifying
+    the path to a TLS CA certificate.  
+@@ -60,7 +60,7 @@ The configuration file is given by a JSON object.
+    specifying the path to a TLS client key.  
  
   - The value for the key *`"remote service"`* is a JSON object specifying the
 -   server arguments for running **`just`** **`serve`** as a service.  
@@ -1449,8 +1506,8 @@ index 4f127ea4..a2561b82 100644
     For subkey *`"interface"`* the value specifies the interface of the service.
     If unset, the loopback device is used.  
     For subkey *`"port"`* the value specifies the port to which the service is to
-@@ -68,7 +68,7 @@ The configuration file is given by a JSON object.
-    TLS server key.  
+@@ -78,7 +78,7 @@ The configuration file is given by a JSON object.
+    specifying the path to a TLS server key.  
  
   - The value for the key *`"execution endpoint"`* is a JSON object specifying
 -   the arguments of a remote execution endpoint to be used by **`just`**
@@ -1458,7 +1515,7 @@ index 4f127ea4..a2561b82 100644
     **`serve`**.  
     For subkey *`"address"`* the value is a string specifying the remote
     execution address in a NAME:PORT format.  
-@@ -91,7 +91,7 @@ The configuration file is given by a JSON object.
+@@ -101,7 +101,7 @@ The configuration file is given by a JSON object.
     unset, the number of available cores is used.  
  
   - The value for the key *`"build"`* is a JSON object specifying arguments used
@@ -1467,12 +1524,17 @@ index 4f127ea4..a2561b82 100644
     For subkey *`"build jobs"`* the value specifies the number of jobs to run
     during a remote build. If unset, the same value as for outer key *`"jobs"`*
     is used.  
-@@ -150,4 +150,4 @@ An example serve configuration file could look as follows.
+@@ -168,4 +168,10 @@ An example serve configuration file could look as follows.
  See also
  ========
  
--**`just`**(1)
++<<<<<<< HEAD:share/man/just-serve-config.5.md
+ **`just`**(1), **`just-mrrc`**(5)
++||||||| parent of f09bca53 ([must] Build single binary for all subcommands):share/man/just-serve-config.5.md
++**`just`**(1)
++=======
 +**`must`**(1)
++>>>>>>> f09bca53 ([must] Build single binary for all subcommands):share/man/must-serve-config.5.md
 diff --git a/share/man/just-mr.1.md b/share/man/must.1.md
 similarity index 68%
 rename from share/man/just-mr.1.md
@@ -2179,6 +2241,19 @@ index 7a7c00c0..afd995c6 100644
  
 -complete -F _just-mr_completion just-mr
 +complete -F _must_completion must
+diff --git a/src/buildtool/common/location.cpp b/src/buildtool/common/location.cpp
+index bc3a57dc..57f2d658 100644
+--- a/src/buildtool/common/location.cpp
++++ b/src/buildtool/common/location.cpp
+@@ -34,7 +34,7 @@ auto ReadLocationObject(nlohmann::json const& location,
+     std::filesystem::path root_path{};
+     if (root == "workspace") {
+         if (not ws_root) {
+-            Logger::Log(LogLevel::Warning,
++            Logger::Log(LogLevel::Debug,
+                         "Not in workspace root, ignoring location {}.",
+                         location.dump(-1));
+             return std::nullopt;
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
 index ca174c84..26ce3183 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
@@ -2194,7 +2269,7 @@ index ca174c84..26ce3183 100644
          }
          auto const object_type = ws_root->BlobType(file_path);
 diff --git a/src/buildtool/main/TARGETS b/src/buildtool/main/TARGETS
-index f1d5aa99..8e28e1ae 100644
+index 91f711ac..9ba4897c 100644
 --- a/src/buildtool/main/TARGETS
 +++ b/src/buildtool/main/TARGETS
 @@ -1,9 +1,6 @@
@@ -2233,7 +2308,7 @@ index f1d5aa99..8e28e1ae 100644
  , "retry":
    { "type": ["@", "rules", "CC", "library"]
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index 39f0a17e..4dac1b66 100644
+index 759c7124..d38c1d30 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
 @@ -14,6 +14,8 @@
@@ -2245,7 +2320,7 @@ index 39f0a17e..4dac1b66 100644
  #include "gsl/gsl"
  #include "src/buildtool/logging/log_level.hpp"
  #include "src/buildtool/logging/logger.hpp"
-@@ -169,11 +171,7 @@ auto SetupServeServiceCommandArguments(
+@@ -170,11 +172,7 @@ auto SetupServeServiceCommandArguments(
  
  }  // namespace
  
@@ -2258,7 +2333,7 @@ index 39f0a17e..4dac1b66 100644
      auto* cmd_version = app.add_subcommand(
          "version", "Print version information in JSON format.");
      auto* cmd_describe = app.add_subcommand(
-@@ -201,6 +199,39 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
+@@ -202,6 +200,39 @@ auto ParseCommandLineArguments(int argc, char const* const* argv)
                               "Build and stage artifacts from graph file.");
      app.require_subcommand(1);
  
@@ -2379,7 +2454,7 @@ index c1151c3f..4f3830f7 100644
  
      [[nodiscard]] static auto SetBuildRoot(
 diff --git a/src/other_tools/just_mr/TARGETS b/src/other_tools/just_mr/TARGETS
-index 7633eaea..4f916d0d 100644
+index be03021d..6f671694 100644
 --- a/src/other_tools/just_mr/TARGETS
 +++ b/src/other_tools/just_mr/TARGETS
 @@ -1,8 +1,9 @@
@@ -2698,10 +2773,10 @@ index 31f63d3d..d4f08290 100644
          // Run subcommand `setup` or `setup-env`
          if (arguments.cmd == SubCommand::kSetup or
 diff --git a/src/other_tools/just_mr/rc.cpp b/src/other_tools/just_mr/rc.cpp
-index 8a81a686..1be18b1d 100644
+index 89fb8ef2..ddffb9e0 100644
 --- a/src/other_tools/just_mr/rc.cpp
 +++ b/src/other_tools/just_mr/rc.cpp
-@@ -26,6 +26,8 @@
+@@ -27,6 +27,8 @@
  #include "src/other_tools/just_mr/exit_codes.hpp"
  #include "src/other_tools/just_mr/rc_merge.hpp"
  
@@ -2709,26 +2784,8 @@ index 8a81a686..1be18b1d 100644
 +
  namespace {
  
- [[nodiscard]] auto ReadLocation(
-@@ -48,7 +50,7 @@ namespace {
-         std::filesystem::path root_path{};
-         if (root_str == "workspace") {
-             if (not ws_root) {
--                Logger::Log(LogLevel::Warning,
-+                Logger::Log(LogLevel::Debug,
-                             "Not in workspace root, ignoring location {}.",
-                             location.ToJson().dump(-1));
-                 return std::nullopt;
-@@ -88,7 +90,7 @@ namespace {
-     std::filesystem::path root_path{};
-     if (root == "workspace") {
-         if (not ws_root) {
--            Logger::Log(LogLevel::Warning,
-+            Logger::Log(LogLevel::Debug,
-                         "Not in workspace root, ignoring location {}.",
-                         location.dump(-1));
-             return std::nullopt;
-@@ -139,6 +141,10 @@ namespace {
+ /// \brief Overlay for ReadLocationObject accepting an ExpressionPtr and that
+@@ -91,6 +93,10 @@ namespace {
          if (not rc_path) {
              rc_path = std::filesystem::weakly_canonical(
                  std::filesystem::absolute(kDefaultRCPath));
@@ -2739,7 +2796,7 @@ index 8a81a686..1be18b1d 100644
          }
          else {
              if (not FileSystemManager::IsFile(*rc_path)) {
-@@ -286,14 +292,6 @@ namespace {
+@@ -238,14 +244,6 @@ namespace {
              }
          }
      }
@@ -2754,7 +2811,7 @@ index 8a81a686..1be18b1d 100644
      // read git binary path; overwritten if user provided it already
      if (not clargs->common.git_path) {
          auto git = ReadLocation(rc_config["git"],
-@@ -303,11 +301,14 @@ namespace {
+@@ -255,11 +253,14 @@ namespace {
          }
      }
      // read the just file-arguments
@@ -2771,7 +2828,7 @@ index 8a81a686..1be18b1d 100644
                          "map, but found {}.",
                          just_files->ToString());
              std::exit(kExitConfigError);
-@@ -316,18 +317,21 @@ namespace {
+@@ -268,18 +269,21 @@ namespace {
          clargs->just_cmd.config = ReadOptionalLocationList(
              files["config"],
              clargs->common.just_mr_paths->workspace_root,
@@ -2797,7 +2854,7 @@ index 8a81a686..1be18b1d 100644
                          "be a map, but found {}",
                          just_args->ToString());
              std::exit(kExitConfigError);
-@@ -338,7 +342,7 @@ namespace {
+@@ -290,7 +294,7 @@ namespace {
              if (not cmd_args->IsList()) {
                  Logger::Log(
                      LogLevel::Error,
@@ -2806,7 +2863,7 @@ index 8a81a686..1be18b1d 100644
                      "have as value a list of strings, but found {}",
                      cmd_name,
                      cmd_args->ToString());
-@@ -350,7 +354,7 @@ namespace {
+@@ -302,7 +306,7 @@ namespace {
                  if (not arg->IsString()) {
                      Logger::Log(
                          LogLevel::Error,
@@ -2828,10 +2885,10 @@ index fe8e3d89..0c8568f5 100644
      -> std::optional<std::filesystem::path>;
  #endif
 diff --git a/src/other_tools/just_mr/setup.cpp b/src/other_tools/just_mr/setup.cpp
-index e4430b79..eb6aee77 100644
+index 0479d0e5..4c3dd31c 100644
 --- a/src/other_tools/just_mr/setup.cpp
 +++ b/src/other_tools/just_mr/setup.cpp
-@@ -226,8 +226,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
+@@ -230,8 +230,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
              : std::nullopt,
          common_args.jobs,
          multi_repo_tool_name,
@@ -2856,13 +2913,13 @@ index 7c78533c..2533d7a2 100644
      auto const& config_file = *config_file_opt;
  
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
-index 4d397902..d4675821 100644
+index f470ee61..6963b068 100644
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
-@@ -32,13 +32,16 @@
- std::unordered_set<std::string> const kLocationTypes{"workspace",
-                                                      "home",
-                                                      "system"};
+@@ -29,13 +29,16 @@
+ 
+ /* Paths and constants required by just-mr */
+ 
 -auto const kDefaultJustPath = "just";
  auto const kDefaultGitPath = "git";
 -auto const kDefaultRCPath = StorageConfig::GetUserHome() / ".just-mrrc";
@@ -2879,7 +2936,7 @@ index 4d397902..d4675821 100644
  
  std::vector<std::string> const kTakeOver = {"bindings",
                                              "target_file_name",
-@@ -58,15 +61,15 @@ struct JustSubCmdFlags {
+@@ -55,15 +58,15 @@ struct JustSubCmdFlags {
  
  // ordered, so that we have replicability
  std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
@@ -2904,7 +2961,7 @@ index 4d397902..d4675821 100644
      {"describe",
       {.config = true,
        .build_root = true,
-@@ -138,11 +141,22 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+@@ -135,11 +138,22 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
        .remote = false,
        .remote_props = false,
        .serve = false,

@@ -7,7 +7,7 @@ Subject: [misc] Disable "to_git" for file repositories
  1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/etc/repos.json b/etc/repos.json
-index e6596308..24730f3b 100644
+index 6a973017..05fefef6 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -69,20 +69,20 @@

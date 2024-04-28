@@ -60,7 +60,7 @@ Example:
 ```jsonnet
 // evaluates to "foobar"
 let([ set('a', 'foo'),
-      set('b', 'bar')
+      set('b', 'bar'),
     ],
     join([var('a'), var('b')]))
 ```
@@ -78,7 +78,7 @@ Select expression depending on condition.
 | Argument | Description | Default value |
 |-|:-|:-:|
 | `cond` | Expression for condition | None |
-| `pass` | Expression to evaluate if `cond` succeeds | None |
+| `pass` | (optional) Expression to evaluate if `cond` succeeds | `[]` |
 | `fail` | (optional) Expression to evaluate if `cond` fails | `[]` |
 
 Example:
@@ -268,6 +268,24 @@ foldl('x', 'acc', ['bar', 'baz'],
 
 ---
 
+### `not`
+
+Negate boolean expression.
+
+`not`(`cond`: *expr*) -> *bool-expr*
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `cond` | Expression to negate its boolean value | None |
+
+Example:
+```jsonnet
+// evaluates to true
+not(null)
+```
+
+---
+
 ### `nub_right`
 
 Remove duplicates from list and retain only the right-most one.
@@ -443,6 +461,24 @@ reverse(['a', 'b', 'c'])
 
 ---
 
+### `length`
+
+Get length of list.
+
+`length`(`list`: *list-expr*) -> *num-expr*
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `list` | List-expression to get length of | None |
+
+Example:
+```jsonnet
+// evaluates to 3
+length(['a', 'b', 'c'])
+```
+
+---
+
 ### `flatten`
 
 Concatenate lists.
@@ -465,19 +501,20 @@ flatten([ ['a', 'b'], ['c', 'd'] ])
 
 Combine maps with the union of their fields.
 
-`map_union`(`maps`: *list-expr*, `disjoint`: *bool*) -> *list-expr*
+`map_union`(`maps`: *list-expr*, `disjoint`: *bool*, `msg`: *expr*) -> *list-expr*
 
 | Argument | Description | Default value |
 |-|:-|:-:|
 | `lists`    | List-expression containing the maps to unify | None |
 | `disjoint` | (optional) Bool indicating that maps should be disjoint | `false` |
+| `msg`      | (optional) Expression stringified as error message on conflict | `null` |
 
 Example:
 ```jsonnet
 // evaluates to {"a":"x","b":"y"}
 map_union([ map({a:'x'}), map({b:'y'} ])
-// evaluation fails
-map_union([ map({a:'x'}), map({a:'y'} ], disjoint=true)
+// evaluation fails with specified 'error message'
+map_union([ map({a:'x'}), map({a:'y'} ], disjoint=true, msg='error message')
 ```
 
 > See also [`map()`](#map).
@@ -626,21 +663,23 @@ escape_chars('foobar', ['f', 'b'], ',')
 
 Interpret keys of map as paths and change their prefix.
 
-`to_subdir`(`map`: *map-expr*, `subdir`: *str-expr*, `flat`: *expr*, `msg`: *expr*) -> *map-expr*
+`to_subdir`(`subdir`: *str-expr*, `map`: *map-expr*, `flat`: *expr*, `msg`: *expr*) -> *map-expr*
 
 | Argument | Description | Default value |
 |-|:-|:-:|
-| `map`    | Map-expression containin the keys to modify | None |
 | `subdir` | String-expression specifying the path prefixed to keys | None |
+| `map`    | Map-expression containin the keys to modify | None |
 | `flat`   | (optional) Expression boolean foring replacement keys' dirname | `false` |
 | `msg`    | (optional) Expression stringified as error message on conflict | `null` |
 
 Example:
 ```jsonnet
-// evaluates to {"sub/a/b":"xy"}
-to_subdir(map({'a/b':'xy'}), 'sub')
-// evaluates to {"sub/b":"xy"}
-to_subdir(map({'a/b':'xy'}), 'sub', flat=true, msg='conflict error')
+// evaluates to {"foo/a/b":"xy"}
+to_subdir('foo', map({'a/b':'xy'}))
+// evaluates to {"foo/b":"xy"}
+to_subdir('foo', map({'a/b':'xy'}), flat=true, msg='conflict error')
+// evaluation fails with specified 'error message'
+to_subdir('foo', map({'a/b':'xy','c/b':'yz'}), flat=true, msg='conflict error')
 ```
 
 > See also [`map()`](#map).
@@ -805,28 +844,38 @@ Example:
 assert_non_empty('error message', '')
 ```
 
+---
+
+### `assert_that`
+
+Trigger evaluation failure if predicate verification fails or return value
+otherwise.
+
+`assert_that`(`predicate`: *expr*, `msg`: *expr*, `value`: *expr*, `var`: *str*) -> *expr*
+
+| Argument | Description | Default value |
+|-|:-|:-:|
+| `predicate` | Expression used for predicate verification | None |
+| `msg`       | Expression stringified as error message | None |
+| `value`     | Result value to verify and return | None |
+| `var`       | (optional) Literal string used as variable name | `_` |
+
+Example:
+```jsonnet
+// evaluates to "foo"
+assert_that(eq('foo', var('_')), 'error message', join(['f', 'o', 'o']))
+// evaluates to "foo"
+assert_that(eq('foo', var('x')), 'error message', join(['f', 'o', 'o']), var='x')
+// evaluation fails with specified 'error message'
+assert_that(eq('bar', var('x')), 'error message', join(['f', 'o', 'o']), var='x')
+```
+
+> See also [`join()`](#join).
+
 ## Utility functions
 
 Additional functions that make the developer's life easier but do not have a
 direct counter-part in the Justbuild expression language.
-
----
-
-### `not`
-
-Negate boolean expression.
-
-`not`(`cond`: *expr*) -> *bool-expr*
-
-| Argument | Description | Default value |
-|-|:-|:-:|
-| `cond` | Expression to negate its boolean value | None |
-
-Example:
-```jsonnet
-// evaluates to true
-not(null)
-```
 
 ---
 

@@ -1,10 +1,9 @@
 # Mustbuild [![Bootstrap and Deploy](../../actions/workflows/deploy.yml/badge.svg)](../../releases)
 
 Mustbuild is a friendly fork of
-[Justbuild](https://github.com/just-buildsystem/justbuild). It is is maintained
-as a patch series. This fork introduces extensions that mainly focus on
-improving usability while being fully compatible with existing Justbuild
-projects.
+[Justbuild](https://github.com/just-buildsystem/justbuild). It is maintained as
+a patch series. This fork introduces extensions that mainly focus on improving
+usability while being fully compatible with existing Justbuild projects.
 
 Some of those extensions are:
 
@@ -23,8 +22,8 @@ In an empty directory, create a file named `TARGETS` with the following content:
   // Target 'helloworld' based on built-in rule 'generic'
   helloworld: {
     type: 'generic',
-    cmds: ['echo Hello World > out.txt'],
-    outs: ['out.txt'],
+    cmds: 'echo Hello World > out.txt',
+    outs: 'out.txt',
   },
 }
 ```
@@ -44,7 +43,7 @@ Hello World
 ## Tutorial
 
 The tutorial consists of a set of example projects with extensive descriptions.
-It is recommend to look at these projects in order.
+It is recommended to look at these projects in order.
 
 1. [Plain project](./examples/1_plain/README.md)
 2. [Minimal C++ project](./examples/2_cpp_min/README.md)
