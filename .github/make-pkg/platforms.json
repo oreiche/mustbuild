@@ -242,6 +242,36 @@
     , {"Name": "jsonnet", "Libs": "-ljsonnet"}
     ]
   }
+, "ubuntu24.04":
+  { "type": "deb"
+  , "image": "ubuntu:24.04"
+  , "distrelease": "noble"
+  , "build-depends":
+    [ "protobuf-compiler"
+    , "protobuf-compiler-grpc"
+    , "libprotobuf-dev"
+    , "libgrpc++-dev"
+    , "libfmt-dev"
+    , "nlohmann-json3-dev"
+    , "libgit2-dev"
+    , "libssl-dev"
+    , "libcli11-dev"
+    , "libmsgsl-dev"
+    , "libarchive-dev"
+    , "libcurl4-openssl-dev"
+    , "libjsonnet-dev"
+    , "python3"
+    , "pandoc"
+    , "patch"
+    , "unzip"
+    , "pkg-config"
+    ]
+  , "non-local-deps": ["google_apis", "bazel_remote_apis"]
+  , "gen-pkgconfig":
+    [ {"Name": "gsl", "Cflags": "-I/usr/include"}
+    , {"Name": "jsonnet", "Libs": "-ljsonnet"}
+    ]
+  }
 , "fedora37":
   { "type": "rpm"
   , "image": "fedora:37"
