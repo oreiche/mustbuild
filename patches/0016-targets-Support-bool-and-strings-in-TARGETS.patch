@@ -4,10 +4,79 @@ Subject: [targets] Support bool and strings in TARGETS
 
 ... for config and string fields.
 ---
+ .../build_engine/base_maps/field_reader.hpp   |  7 +++++-
+ .../target_map/built_in_rules.cpp             | 16 ++++++++++++++
  .../build_engine/target_map/target_map.cpp    | 22 +++++++++++++++++++
  .../build_engine/target_map/utils.cpp         |  4 ++++
- 2 files changed, 26 insertions(+)
+ 4 files changed, 48 insertions(+), 1 deletion(-)
 
+diff --git a/src/buildtool/build_engine/base_maps/field_reader.hpp b/src/buildtool/build_engine/base_maps/field_reader.hpp
+index 8c1c0f23..3eeb4390 100644
+--- a/src/buildtool/build_engine/base_maps/field_reader.hpp
++++ b/src/buildtool/build_engine/base_maps/field_reader.hpp
+@@ -141,8 +141,13 @@ class FieldReader {
+ 
+     [[nodiscard]] auto ReadStringList(std::string const& field_name) const
+         -> std::optional<std::vector<std::string>> {
+-        auto const& list =
++        auto list =
+             GetOrDefault(json_, field_name, nlohmann::json::array());
++        if (list.is_string()) {
++            auto str = list.get<std::string>();
++            list = nlohmann::json::array();
++            list.push_back(std::move(str));
++        }
+         if (not list.is_array()) {
+             (*logger_)(fmt::format("Field {} in {} {} is not a list",
+                                    field_name,
+diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buildtool/build_engine/target_map/built_in_rules.cpp
+index 6d58e900..421002e3 100644
+--- a/src/buildtool/build_engine/target_map/built_in_rules.cpp
++++ b/src/buildtool/build_engine/target_map/built_in_rules.cpp
+@@ -1096,6 +1096,10 @@ void GenericRuleWithDeps(
+         if (not outs_value) {
+             return;
+         }
++        if (outs_value->IsString()) {
++            auto str_list = Expression::list_t{outs_value};
++            outs_value = ExpressionPtr{Expression{str_list}};
++        }
+         if (not outs_value->IsList()) {
+             (*logger)(fmt::format("outs has to evaluate to a list of "
+                                   "strings, but found {}",
+@@ -1126,6 +1130,10 @@ void GenericRuleWithDeps(
+         if (not out_dirs_value) {
+             return;
+         }
++        if (out_dirs_value->IsString()) {
++            auto str_list = Expression::list_t{out_dirs_value};
++            out_dirs_value = ExpressionPtr{Expression{str_list}};
++        }
+         if (not out_dirs_value->IsList()) {
+             (*logger)(fmt::format("out_dirs has to evaluate to a list of "
+                                   "strings, but found {}",
+@@ -1185,6 +1193,10 @@ void GenericRuleWithDeps(
+     if (not cmd_value) {
+         return;
+     }
++    if (cmd_value->IsString()) {
++        auto str_list = Expression::list_t{cmd_value};
++        cmd_value = ExpressionPtr{Expression{str_list}};
++    }
+     if (not cmd_value->IsList()) {
+         (*logger)(fmt::format(
+                       "cmds has to evaluate to a list of strings, but found {}",
+@@ -1247,6 +1259,10 @@ void GenericRuleWithDeps(
+     if (sh_val->IsNone()) {
+         sh_val = Expression::kEmptyList;
+     }
++    if (sh_val->IsString()) {
++        auto str_list = Expression::list_t{sh_val};
++        sh_val = ExpressionPtr{Expression{str_list}};
++    }
+     if (not sh_val->IsList()) {
+         (*logger)(fmt::format("sh has evaluate to list of strings or null, but "
+                               "found {}",
 diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
 index a4a08c40..ccafb248 100644
 --- a/src/buildtool/build_engine/target_map/target_map.cpp
