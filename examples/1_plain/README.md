@@ -77,15 +77,14 @@ Hello World
 
 The `file_greeter` reads the string that will be used for greeting from the
 local file [name.txt](./name.txt). This time, two commands were used to compute
-the output. For convenience, a *Jsonnet multi-line string* (operator `|||`) is
-used in combination with the [function `lines()`](../../doc/must-lang.md#lines),
-which converts multi-line strings to string lists.
+the output. For convenience, the *Jsonnet multi-line string* operator (`|||`) is
+used to generate a newline-separated string.
 
 ```jsonnet
 file_greeter: {
   type: 'generic',
-  // Field 'cmds' expects list of strings or newline separated string.
-  // -> Jsonnet multi-line string generates newline separated string.
+  // Field 'cmds' expects a list of strings or a newline-separated string.
+  // -> Jsonnet multi-line string generates a newline-separated string.
   cmds: |||
     printf "Hello " > out.txt
     cat name.txt >> out.txt
