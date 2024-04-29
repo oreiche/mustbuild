@@ -12,8 +12,8 @@
   //  - depends on local file 'name.txt'
   file_greeter: {
     type: 'generic',
-    // Field 'cmds' expects list of strings or newline separated string.
-    // -> Jsonnet multi-line string generates newline separated string.
+    // Field 'cmds' expects a list of strings or a newline-separated string.
+    // -> Jsonnet multi-line string generates a newline-separated string.
     cmds: |||
       printf "Hello " > out.txt
       cat name.txt >> out.txt
