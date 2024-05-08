@@ -90,12 +90,12 @@ The C and C++ compile flags are specified using the fields `ADD_CFLAGS` and
 on variable `DEBUG`, either debug or release flags are being set. Note that the
 actual flags are coming from local Jsonnet variables defined above.
 
-To see if the compile flags are correctly used, run Mustbuild with `--log-limit
-5` to see all action commands.
+To see if the compile flags are correctly used, run Mustbuild with `--verbose`
+to see all action commands.
 
 ```sh
-$ must build --log-limit 5                      # uses -O2 -DNDEBUG
-$ must build --log-limit 5 -D'{"DEBUG":true}'   # uses -O0 -g
+$ must build --verbose                      # uses -O2 -DNDEBUG
+$ must build --verbose -D'{"DEBUG":true}'   # uses -O0 -g
 ```
 
 The actual compilers used have been set from open name `toolchain`, which is
@@ -145,11 +145,11 @@ native_gcc: {
 ```
 
 To see if the specified toolchain is correctly used, run Mustbuild with
-`--log-limit 5` to see all action commands.
+`--verbose` to see all action commands.
 
 ```sh
-$ must build --log-limit 5                                           # uses c++
-$ must build --log-limit 5 -D'{"TOOLCHAIN_CONFIG":{"FAMILY":"gnu"}}' # uses g++
+$ must build --verbose                                              # uses c++
+$ must build --verbose -D'{"TOOLCHAIN_CONFIG":{"FAMILY":"gnu"}}'    # uses g++
 ```
 
 ## Top-level targets

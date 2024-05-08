@@ -1,6 +1,6 @@
-# Reduced command line output
+# Non-verbose command line output
 
-To reduce the amount of command line output, unnecessary prints have been
+To reduce the verbosity of the command line output, unnecessary prints have been
 removed from the default log level.
 
 ```sh
@@ -15,10 +15,10 @@ INFO: Artifacts built, logical paths are:
 
 Instead, all verbose non-debug output (including which action commands are run)
 was moved to a new log level `LogLevel::Verbose`. This log level can be enabled
-with `--log-limit 5`.
+with `--verbose`.
 
 ```sh
-$ must --log-limit 5 build helloworld
+$ must --verbose build helloworld
 INFO: Using setup root /home/user/src/mustbuild/examples/3_cpp_adv
 INFO: Performing repositories setup
 INFO: Found 6 repositories to set up

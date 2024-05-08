@@ -10,7 +10,7 @@ Some of those extensions are:
 - [A new preprocessor](./doc/preprocessor.md) that supports [language extensions](./doc/must-lang.md)
 - [Improved target descriptions](./doc/targets.md)
 - [Interactive progress reporting](./doc/progress.md)
-- [Reduced command line output](./doc/verbose.md)
+- [Non-verbose command line output](./doc/verbosity.md)
 - [Single binary for all subcommands](./doc/single-binary.md)
 
 ## Example
