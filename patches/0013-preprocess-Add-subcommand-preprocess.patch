@@ -13,7 +13,7 @@ Subject: [preprocess] Add subcommand 'preprocess'
  7 files changed, 118 insertions(+), 10 deletions(-)
 
 diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
-index 774ccfaf..725d9e28 100644
+index d6318d20..3230807e 100644
 --- a/share/man/must-backend.5.md
 +++ b/share/man/must-backend.5.md
 @@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
@@ -37,7 +37,7 @@ index 774ccfaf..725d9e28 100644
  **`analyse`**|**`build`**|**`install`**
  ---------------------------------------
  
-@@ -414,29 +421,29 @@ Path to local log file. **`must`** will store the information printed on
+@@ -425,29 +432,29 @@ Path to local log file. **`must`** will store the information printed on
  stderr in the log file along with the thread id and timestamp when the
  output has been generated.  
  Supported by:
@@ -72,7 +72,7 @@ index 774ccfaf..725d9e28 100644
  
  **`--expression-log-limit`** *`NUM`*  
  In error messages, truncate the entries in the enumeration of the active
-@@ -517,6 +524,11 @@ Ensure that all installed artifacts are available in local CAS as well,
+@@ -528,6 +535,11 @@ Ensure that all installed artifacts are available in local CAS as well,
  even when using remote execution.  
  Supported by: install|traverse|install-cas.
  
