@@ -1139,7 +1139,7 @@ diff --git a/share/man/just.1.md b/share/man/must-backend.5.md
 similarity index 93%
 rename from share/man/just.1.md
 rename to share/man/must-backend.5.md
-index f4d613bf..774ccfaf 100644
+index ccd1964e..d6318d20 100644
 --- a/share/man/just.1.md
 +++ b/share/man/must-backend.5.md
 @@ -1,29 +1,28 @@
@@ -1275,7 +1275,7 @@ index f4d613bf..774ccfaf 100644
  details.
  
  **`gc`**
-@@ -281,7 +262,7 @@ corresponding disk space reclaimed.
+@@ -292,7 +273,7 @@ that do not lose information.
  -------------
  
  This subcommand starts a single node remote execution service, honoring
@@ -1284,7 +1284,7 @@ index f4d613bf..774ccfaf 100644
  
  If the flag **`--compatible`** is provided, the execution service will
  honor the original remote build execution protocol.
-@@ -292,7 +273,7 @@ honor the original remote build execution protocol.
+@@ -303,7 +284,7 @@ honor the original remote build execution protocol.
  This subcommand starts a service that provides target dependencies needed for a
  remote execution build. It expects as its only and mandatory argument the path
  to a configuration file, following the format described in
@@ -1293,7 +1293,7 @@ index f4d613bf..774ccfaf 100644
  
  OPTIONS
  =======
-@@ -425,11 +406,11 @@ Supported by: build|install|rebuild|traverse.
+@@ -436,11 +417,11 @@ Supported by: build|install|rebuild|traverse.
  
  **`--dump-graph`** *`PATH`*  
  File path for writing the action graph description to. See
@@ -1307,7 +1307,7 @@ index f4d613bf..774ccfaf 100644
  stderr in the log file along with the thread id and timestamp when the
  output has been generated.  
  Supported by:
-@@ -799,7 +780,7 @@ out clean up tasks that do not affect what is stored in the cache.
+@@ -810,7 +791,7 @@ out clean up tasks that do not affect what is stored in the cache.
  EXIT STATUS
  ===========
  
@@ -1316,7 +1316,7 @@ index f4d613bf..774ccfaf 100644
  
   - 0: the command completed successfully
   - 1: the command could not complete due to some errors (e.g.,
-@@ -811,6 +792,6 @@ The exit status of **`just`** is one of the following values:
+@@ -822,6 +803,6 @@ The exit status of **`just`** is one of the following values:
  See also
  ========
  
@@ -2255,7 +2255,7 @@ index bc3a57dc..57f2d658 100644
                          location.dump(-1));
              return std::nullopt;
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index ca174c84..26ce3183 100644
+index f7afb077..59b5aeba 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
 @@ -435,6 +435,9 @@ class ExecutorImpl {

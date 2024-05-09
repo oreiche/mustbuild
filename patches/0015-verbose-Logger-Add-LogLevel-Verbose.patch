@@ -4,32 +4,51 @@ Subject: [verbose] Logger: Add LogLevel::Verbose
 
 ... and use it for verbose output and action commands.
 ---
+ src/buildtool/common/cli.hpp                  |  6 ++++++
  .../execution_engine/executor/executor.hpp    |  2 +-
  .../graph_traverser/graph_traverser.hpp       |  6 +++---
  src/buildtool/logging/log_level.hpp           |  3 +++
  src/buildtool/logging/log_sink_cmdline.hpp    |  3 +++
  src/buildtool/main/main.cpp                   | 20 +++++++++----------
  .../exports_progress_reporter.cpp             |  2 +-
+ src/other_tools/just_mr/cli.hpp               |  6 ++++++
  src/other_tools/just_mr/launch.cpp            |  5 +++--
  src/other_tools/just_mr/main.cpp              |  6 ++++++
  src/other_tools/just_mr/setup.cpp             |  2 +-
- 9 files changed, 31 insertions(+), 18 deletions(-)
+ 11 files changed, 43 insertions(+), 18 deletions(-)
 
+diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
+index 4ba9426d..979db153 100644
+--- a/src/buildtool/common/cli.hpp
++++ b/src/buildtool/common/cli.hpp
+@@ -255,6 +255,12 @@ static inline auto SetupLogArguments(
+                        static_cast<int>(kLastLogLevel),
+                        static_cast<int>(kDefaultLogLevel)))
+         ->type_name("NUM");
++    app->add_flag_function(
++        "-v,--verbose",
++        [clargs](auto /*unused*/) { clargs->log_limit = LogLevel::Verbose; },
++        fmt::format(
++            "Enable verbose command line output (shortcut for --log-limit={})",
++            static_cast<int>(LogLevel::Verbose)));
+     app->add_option_function<std::underlying_type_t<LogLevel>>(
+            "--restrict-stderr-log-limit",
+            [clargs](auto const& limit) {
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index 26ce3183..b78be851 100644
+index 59b5aeba..b18f812f 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
-@@ -604,7 +604,7 @@ class ExecutorImpl {
-                 }
-                 return message;
-             };
+@@ -606,7 +606,7 @@ class ExecutorImpl {
+             }
+             return message;
+         };
 -        logger.Emit((has_err or has_out) ? LogLevel::Info : LogLevel::Debug,
 +        logger.Emit((has_err or has_out) ? LogLevel::Info : LogLevel::Verbose,
                      std::move(build_message));
      }
  
 diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
-index 93aa235f..f496e10b 100644
+index 722145f5..e2390ed0 100644
 --- a/src/buildtool/graph_traverser/graph_traverser.hpp
 +++ b/src/buildtool/graph_traverser/graph_traverser.hpp
 @@ -645,7 +645,7 @@ class GraphTraverser {
@@ -179,6 +198,23 @@ index 30ca8935..ca3172c2 100644
 +            Logger::Log(logger, LogLevel::Verbose, "{}", msg);
          });
  }
+diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
+index 34bf8a7c..b5487609 100644
+--- a/src/other_tools/just_mr/cli.hpp
++++ b/src/other_tools/just_mr/cli.hpp
+@@ -280,6 +280,12 @@ static inline auto SetupMultiRepoLogArguments(
+                        static_cast<int>(kLastLogLevel),
+                        static_cast<int>(kDefaultLogLevel)))
+         ->type_name("NUM");
++    app->add_flag_function(
++        "-v,--verbose",
++        [clargs](auto /*unused*/) { clargs->log_limit = LogLevel::Verbose; },
++        fmt::format(
++            "Enable verbose command line output (shortcut for --log-limit={})",
++            static_cast<int>(LogLevel::Verbose)));
+     app->add_option_function<std::underlying_type_t<LogLevel>>(
+            "--restrict-stderr-log-limit",
+            [clargs](auto const& limit) {
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
 index 25e8656a..fd3bbb24 100644
 --- a/src/other_tools/just_mr/launch.cpp
