@@ -35,10 +35,10 @@ index 4ba9426d..979db153 100644
             "--restrict-stderr-log-limit",
             [clargs](auto const& limit) {
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index 59b5aeba..b18f812f 100644
+index 020bef19..35284179 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
-@@ -606,7 +606,7 @@ class ExecutorImpl {
+@@ -607,7 +607,7 @@ class ExecutorImpl {
              }
              return message;
          };
