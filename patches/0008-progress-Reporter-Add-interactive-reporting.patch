@@ -4,17 +4,17 @@ Subject: [progress] Reporter: Add interactive reporting
 
 ---
  bin/bootstrap.py                              |   2 +-
- src/buildtool/common/cli.hpp                  |  22 ++-
+ src/buildtool/common/cli.hpp                  |  22 +++-
  src/buildtool/common/clidefaults.hpp          |   3 +
  src/buildtool/main/main.cpp                   |   7 +-
  src/buildtool/progress_reporting/TARGETS      |   1 +
  .../base_progress_reporter.cpp                |  13 +-
  .../base_progress_reporter.hpp                |   6 +-
- .../progress_reporting/progress_reporter.cpp  | 126 +++++++++++++++++-
+ .../progress_reporting/progress_reporter.cpp  | 123 +++++++++++++++++-
  .../progress_reporting/progress_reporter.hpp  |   5 +-
  src/other_tools/just_mr/cli.hpp               |  24 +++-
  src/other_tools/just_mr/launch.cpp            |  14 ++
- 11 files changed, 204 insertions(+), 19 deletions(-)
+ 11 files changed, 201 insertions(+), 19 deletions(-)
 
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
 index 4747f084..951dedaf 100755
@@ -169,10 +169,10 @@ index 08bb0d74..6bedb7a0 100644
    private:
      constexpr static std::int64_t kStartDelayMillis = 3000;
 diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
-index 2e8de0a4..28330c49 100644
+index 2e8de0a4..d1554bdf 100644
 --- a/src/buildtool/progress_reporting/progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/progress_reporter.cpp
-@@ -16,13 +16,137 @@
+@@ -16,13 +16,134 @@
  
  #include <string>
  
@@ -187,7 +187,7 @@ index 2e8de0a4..28330c49 100644
 +    constexpr static int kFancyMaxTasks = 8;
 +    constexpr static int kFancyMaxCount = 10;
 +    static inline const fmt::text_style kFancyColor =
-+        fg(fmt::color::light_green);
++        fg(fmt::color::lime_green);
 +
 +    struct State {
 +        int cached;
@@ -247,19 +247,18 @@ index 2e8de0a4..28330c49 100644
 +        state_ = state;
 +
 +        int active = state_.queued - state_.run - state_.cached;
++        auto const counter = Colorize(fmt::format(
++            "[{:{}}/{}]", state_.run + state_.cached, digits, total));
 +
 +        if (plain_log_) {
 +            if (active > 0 and !state_.samples.empty()) {
-+                Logger::Log(
-+                    logger_,
-+                    LogLevel::Progress,
-+                    Colorize("[{:{}}/{}] {} cached, {} processing ({})"),
-+                    state_.run + state_.cached,
-+                    digits,
-+                    total,
-+                    state_.cached,
-+                    active,
-+                    GetOriginString(state_.samples.front()));
++                Logger::Log(logger_,
++                            LogLevel::Progress,
++                            "{} {} cached, {} processing ({})",
++                            counter,
++                            state_.cached,
++                            active,
++                            GetOriginString(state_.samples.front()));
 +            }
 +            return;
 +        }
@@ -275,11 +274,9 @@ index 2e8de0a4..28330c49 100644
 +
 +        Logger::LogVolatile(logger_,
 +                            LogLevel::Progress,
-+                            Colorize("{}[{:{}}/{}] {} cached, {} processing."),
++                            "{}{} {} cached, {} processing.",
 +                            now_msg,
-+                            state_.run + state_.cached,
-+                            digits,
-+                            total,
++                            counter,
 +                            state_.cached,
 +                            active);
 +    }
