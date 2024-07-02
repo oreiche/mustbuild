@@ -217,10 +217,10 @@ index 5b287fa1..ea71dca9 100644
      GcArguments gc;
      ToAddArguments to_add;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index b7b88b61..98cdb53d 100644
+index a1ee9af3..31bce148 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -535,11 +535,12 @@ void SetupFileChunker() {
+@@ -496,11 +496,12 @@ void SetupFileChunker() {
          .config = std::move(config)};
  }
  
@@ -235,8 +235,8 @@ index b7b88b61..98cdb53d 100644
      } catch (std::exception const& e) {
          Logger::Log(LogLevel::Warning,
                      "Failed to determine current working directory ({})",
-@@ -877,6 +878,57 @@ auto main(int argc, char* argv[]) -> int {
-             return kExitSuccess;
+@@ -855,6 +856,57 @@ auto main(int argc, char* argv[]) -> int {
+             return kExitFailure;
          }
  
 +        if (arguments.cmd == SubCommand::kPreProcess) {

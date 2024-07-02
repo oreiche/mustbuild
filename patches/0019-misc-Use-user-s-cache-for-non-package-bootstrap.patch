@@ -7,7 +7,7 @@ Subject: [misc] Use user's cache for non-package bootstrap
  1 file changed, 14 insertions(+), 2 deletions(-)
 
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 673b6f65..4ba38c8a 100755
+index 951dedaf..ac54140c 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -85,7 +85,8 @@ if 'LOCALBASE' in os.environ:
@@ -38,7 +38,7 @@ index 673b6f65..4ba38c8a 100755
  def bootstrap() -> None:
      if g_LOCAL_DEPS:
          print("Bootstrap build in %r from sources %r against LOCALBASE %r" %
-@@ -439,7 +451,7 @@ def bootstrap() -> None:
+@@ -437,7 +449,7 @@ def bootstrap() -> None:
      ] + object_files + dep_flags["link"]
      run(final_cmd, cwd=src_wrkdir)
      CONF_FILE: str = os.path.join(cast(str, g_WRKDIR), "repo-conf.json")
