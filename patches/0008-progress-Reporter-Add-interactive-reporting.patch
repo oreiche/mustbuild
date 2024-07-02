@@ -4,23 +4,23 @@ Subject: [progress] Reporter: Add interactive reporting
 
 ---
  bin/bootstrap.py                              |   2 +-
- src/buildtool/common/cli.hpp                  |  22 ++-
+ src/buildtool/common/cli.hpp                  |  22 +++-
  src/buildtool/common/clidefaults.hpp          |   3 +
- src/buildtool/main/main.cpp                   |   6 +-
+ src/buildtool/main/main.cpp                   |   7 +-
  src/buildtool/progress_reporting/TARGETS      |   1 +
  .../base_progress_reporter.cpp                |  13 +-
  .../base_progress_reporter.hpp                |   6 +-
- .../progress_reporting/progress_reporter.cpp  | 126 +++++++++++++++++-
+ .../progress_reporting/progress_reporter.cpp  | 123 +++++++++++++++++-
  .../progress_reporting/progress_reporter.hpp  |   5 +-
  src/other_tools/just_mr/cli.hpp               |  24 +++-
  src/other_tools/just_mr/launch.cpp            |  14 ++
- 11 files changed, 204 insertions(+), 18 deletions(-)
+ 11 files changed, 201 insertions(+), 19 deletions(-)
 
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index d0020354..673b6f65 100755
+index 4747f084..951dedaf 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
-@@ -469,7 +469,7 @@ def bootstrap() -> None:
+@@ -467,7 +467,7 @@ def bootstrap() -> None:
      run([
          "./out-boot/%s" %
          (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",
@@ -88,22 +88,23 @@ index 88c55b2e..e0e72cbf 100644
      std::vector<std::string>{"env", "--"};
  
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index 11bc3925..c9b78e98 100644
+index c7525c88..c4093a65 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -927,7 +927,11 @@ auto main(int argc, char* argv[]) -> int {
-             RemoteExecutionConfig::DispatchList(),
+@@ -908,8 +908,11 @@ auto main(int argc, char* argv[]) -> int {
              &stats,
              &progress,
+             &main_apis,
 -            ProgressReporter::Reporter(&stats, &progress)};
+-
 +            ProgressReporter::Reporter(&stats,
 +                                       &progress,
 +                                       /*logger=*/nullptr,
 +                                       /*fancy=*/true,
 +                                       arguments.log)};
- 
          if (arguments.cmd == SubCommand::kInstallCas) {
              if (not repo_config.SetGitCAS(StorageConfig::GitRoot())) {
+                 Logger::Log(LogLevel::Debug,
 diff --git a/src/buildtool/progress_reporting/TARGETS b/src/buildtool/progress_reporting/TARGETS
 index adc6f8c5..2629b32e 100644
 --- a/src/buildtool/progress_reporting/TARGETS
@@ -168,10 +169,10 @@ index 08bb0d74..6bedb7a0 100644
    private:
      constexpr static std::int64_t kStartDelayMillis = 3000;
 diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
-index 2e8de0a4..28330c49 100644
+index 2e8de0a4..d1554bdf 100644
 --- a/src/buildtool/progress_reporting/progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/progress_reporter.cpp
-@@ -16,13 +16,137 @@
+@@ -16,13 +16,134 @@
  
  #include <string>
  
@@ -186,7 +187,7 @@ index 2e8de0a4..28330c49 100644
 +    constexpr static int kFancyMaxTasks = 8;
 +    constexpr static int kFancyMaxCount = 10;
 +    static inline const fmt::text_style kFancyColor =
-+        fg(fmt::color::light_green);
++        fg(fmt::color::lime_green);
 +
 +    struct State {
 +        int cached;
@@ -246,19 +247,18 @@ index 2e8de0a4..28330c49 100644
 +        state_ = state;
 +
 +        int active = state_.queued - state_.run - state_.cached;
++        auto const counter = Colorize(fmt::format(
++            "[{:{}}/{}]", state_.run + state_.cached, digits, total));
 +
 +        if (plain_log_) {
 +            if (active > 0 and !state_.samples.empty()) {
-+                Logger::Log(
-+                    logger_,
-+                    LogLevel::Progress,
-+                    Colorize("[{:{}}/{}] {} cached, {} processing ({})"),
-+                    state_.run + state_.cached,
-+                    digits,
-+                    total,
-+                    state_.cached,
-+                    active,
-+                    GetOriginString(state_.samples.front()));
++                Logger::Log(logger_,
++                            LogLevel::Progress,
++                            "{} {} cached, {} processing ({})",
++                            counter,
++                            state_.cached,
++                            active,
++                            GetOriginString(state_.samples.front()));
 +            }
 +            return;
 +        }
@@ -274,11 +274,9 @@ index 2e8de0a4..28330c49 100644
 +
 +        Logger::LogVolatile(logger_,
 +                            LogLevel::Progress,
-+                            Colorize("{}[{:{}}/{}] {} cached, {} processing."),
++                            "{}{} {} cached, {} processing.",
 +                            now_msg,
-+                            state_.run + state_.cached,
-+                            digits,
-+                            total,
++                            counter,
 +                            state_.cached,
 +                            active);
 +    }
@@ -334,7 +332,7 @@ index 13136579..0ea0cace 100644
  };
  
 diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
-index 026d52f7..34bf8a7c 100644
+index 37ef132f..84720cf7 100644
 --- a/src/other_tools/just_mr/cli.hpp
 +++ b/src/other_tools/just_mr/cli.hpp
 @@ -65,6 +65,8 @@ struct MultiRepoLogArguments {
@@ -387,7 +385,7 @@ index 026d52f7..34bf8a7c 100644
  
  static inline void SetupMultiRepoSetupArguments(
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index 34597bec..25e8656a 100644
+index ae5abb3b..c0c6b906 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
 @@ -139,6 +139,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,

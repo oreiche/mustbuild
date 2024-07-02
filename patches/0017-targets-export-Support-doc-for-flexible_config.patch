@@ -8,7 +8,7 @@ Subject: [targets] export: Support doc for flexible_config
  2 files changed, 42 insertions(+), 4 deletions(-)
 
 diff --git a/src/buildtool/build_engine/target_map/export.cpp b/src/buildtool/build_engine/target_map/export.cpp
-index e0bc36c3..582df61b 100644
+index 2d92bed6..e14e5f84 100644
 --- a/src/buildtool/build_engine/target_map/export.cpp
 +++ b/src/buildtool/build_engine/target_map/export.cpp
 @@ -14,8 +14,11 @@
@@ -24,7 +24,7 @@ index e0bc36c3..582df61b 100644
  #include "nlohmann/json.hpp"
  #include "src/buildtool/build_engine/base_maps/field_reader.hpp"
 @@ -111,7 +114,23 @@ void ExportRule(
-     const gsl::not_null<BuildMaps::Target::ResultTargetMap*> result_map) {
+     const gsl::not_null<BuildMaps::Target::ResultTargetMap*>& result_map) {
      auto desc = BuildMaps::Base::FieldReader::CreatePtr(
          desc_json, key.target, "export target", logger);
 -    auto flexible_vars = desc->ReadStringList("flexible_config");
@@ -49,10 +49,10 @@ index e0bc36c3..582df61b 100644
          return;
      }
 diff --git a/src/buildtool/main/describe.cpp b/src/buildtool/main/describe.cpp
-index 659ec3ab..3c2b98c0 100644
+index e3ab1223..8be8afde 100644
 --- a/src/buildtool/main/describe.cpp
 +++ b/src/buildtool/main/describe.cpp
-@@ -16,6 +16,7 @@
+@@ -18,6 +18,7 @@
  
  #include <iostream>
  #include <optional>
@@ -60,7 +60,7 @@ index 659ec3ab..3c2b98c0 100644
  
  #include "nlohmann/json.hpp"
  #include "src/buildtool/build_engine/base_maps/rule_map.hpp"
-@@ -433,11 +434,29 @@ auto DescribeTarget(BuildMaps::Target::ConfiguredTarget const& id,
+@@ -424,11 +425,29 @@ auto DescribeTarget(BuildMaps::Target::ConfiguredTarget const& id,
              if (config_doc_it != desc.end() and config_doc_it->is_object()) {
                  config_doc = *config_doc_it;
              }
@@ -92,5 +92,5 @@ index 659ec3ab..3c2b98c0 100644
 +                    nlohmann::json(config_vars), config_doc, " - ", "   | ");
              }
          }
-         return kExitSuccess;
+         else if (*rule_it == "configure") {
 -- 

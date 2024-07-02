@@ -11,7 +11,7 @@ Subject: [targets] Support bool and strings in TARGETS
  4 files changed, 48 insertions(+), 1 deletion(-)
 
 diff --git a/src/buildtool/build_engine/base_maps/field_reader.hpp b/src/buildtool/build_engine/base_maps/field_reader.hpp
-index 8c1c0f23..3eeb4390 100644
+index f66c0b1b..bb8cf478 100644
 --- a/src/buildtool/build_engine/base_maps/field_reader.hpp
 +++ b/src/buildtool/build_engine/base_maps/field_reader.hpp
 @@ -141,8 +141,13 @@ class FieldReader {
@@ -30,10 +30,10 @@ index 8c1c0f23..3eeb4390 100644
              (*logger_)(fmt::format("Field {} in {} {} is not a list",
                                     field_name,
 diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buildtool/build_engine/target_map/built_in_rules.cpp
-index 6d58e900..421002e3 100644
+index 81f679e5..1ba7b88b 100644
 --- a/src/buildtool/build_engine/target_map/built_in_rules.cpp
 +++ b/src/buildtool/build_engine/target_map/built_in_rules.cpp
-@@ -1096,6 +1096,10 @@ void GenericRuleWithDeps(
+@@ -1086,6 +1086,10 @@ void GenericRuleWithDeps(
          if (not outs_value) {
              return;
          }
@@ -44,7 +44,7 @@ index 6d58e900..421002e3 100644
          if (not outs_value->IsList()) {
              (*logger)(fmt::format("outs has to evaluate to a list of "
                                    "strings, but found {}",
-@@ -1126,6 +1130,10 @@ void GenericRuleWithDeps(
+@@ -1116,6 +1120,10 @@ void GenericRuleWithDeps(
          if (not out_dirs_value) {
              return;
          }
@@ -55,7 +55,7 @@ index 6d58e900..421002e3 100644
          if (not out_dirs_value->IsList()) {
              (*logger)(fmt::format("out_dirs has to evaluate to a list of "
                                    "strings, but found {}",
-@@ -1185,6 +1193,10 @@ void GenericRuleWithDeps(
+@@ -1175,6 +1183,10 @@ void GenericRuleWithDeps(
      if (not cmd_value) {
          return;
      }
@@ -66,7 +66,7 @@ index 6d58e900..421002e3 100644
      if (not cmd_value->IsList()) {
          (*logger)(fmt::format(
                        "cmds has to evaluate to a list of strings, but found {}",
-@@ -1247,6 +1259,10 @@ void GenericRuleWithDeps(
+@@ -1237,6 +1249,10 @@ void GenericRuleWithDeps(
      if (sh_val->IsNone()) {
          sh_val = Expression::kEmptyList;
      }
@@ -78,10 +78,10 @@ index 6d58e900..421002e3 100644
          (*logger)(fmt::format("sh has evaluate to list of strings or null, but "
                                "found {}",
 diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
-index a4a08c40..ccafb248 100644
+index 7bc74800..eb224b28 100644
 --- a/src/buildtool/build_engine/target_map/target_map.cpp
 +++ b/src/buildtool/build_engine/target_map/target_map.cpp
-@@ -438,6 +438,17 @@ void withDependencies(
+@@ -440,6 +440,17 @@ void withDependencies(
          if (not field_value) {
              return;
          }
@@ -99,7 +99,7 @@ index a4a08c40..ccafb248 100644
          if (not field_value->IsList()) {
              (*logger)(fmt::format("String field {} should be a list of "
                                    "strings, but found {}",
-@@ -1018,6 +1029,17 @@ void withRuleDefinition(
+@@ -1041,6 +1052,17 @@ void withRuleDefinition(
          if (not field_value) {
              return;
          }
@@ -118,7 +118,7 @@ index a4a08c40..ccafb248 100644
              (*logger)(fmt::format("Config field {} should evaluate to a list "
                                    "of strings, but got{}",
 diff --git a/src/buildtool/build_engine/target_map/utils.cpp b/src/buildtool/build_engine/target_map/utils.cpp
-index 924b3727..7b4dec1f 100644
+index 91269833..fe3be967 100644
 --- a/src/buildtool/build_engine/target_map/utils.cpp
 +++ b/src/buildtool/build_engine/target_map/utils.cpp
 @@ -162,6 +162,10 @@ auto BuildMaps::Target::Utils::getTainted(

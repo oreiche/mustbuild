@@ -46,7 +46,7 @@ index 682d0745..8a3fee97 100644
    { "type": "configure"
    , "target": ["@", "libgit2", "", "git2"]
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 4ba38c8a..6090fa63 100755
+index ac54140c..c1a52b1f 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -34,6 +34,8 @@ Json = Dict[str, Any]
@@ -58,7 +58,7 @@ index 4ba38c8a..6090fa63 100755
  
  REPOS: str = "etc/repos.json"
  MAIN_MODULE: str = ""
-@@ -481,7 +483,7 @@ def bootstrap() -> None:
+@@ -479,7 +481,7 @@ def bootstrap() -> None:
      run([
          "./out-boot/%s" %
          (MAIN_STAGE, ), "--norc", "--local-build-root", LOCAL_ROOT, "install",

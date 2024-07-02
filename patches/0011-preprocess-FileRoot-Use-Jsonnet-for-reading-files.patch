@@ -26,7 +26,7 @@ index 3d194b96..c3bd22b8 100644
      , ["", "libcurl"]
      , ["", "libarchive"]
 diff --git a/etc/repos.json b/etc/repos.json
-index 551eda17..6a973017 100644
+index ad0430ca..7f2cbe16 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -16,6 +16,7 @@
@@ -38,10 +38,10 @@ index 551eda17..6a973017 100644
      , "bootstrap": {"link": ["-pthread"]}
      , "bootstrap_local": {"link": ["-pthread"]}
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
-index b8b86d29..6cad73eb 100644
+index 51a8e077..f53364a1 100644
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
-@@ -146,7 +146,8 @@
+@@ -157,7 +157,8 @@
  , "file_root":
    { "type": ["@", "rules", "CC", "library"]
    , "name": ["file_root"]
@@ -51,7 +51,7 @@ index b8b86d29..6cad73eb 100644
    , "deps":
      [ "git_tree"
      , "file_system_manager"
-@@ -154,8 +155,10 @@
+@@ -165,8 +166,10 @@
      , ["src/buildtool/compatibility", "compatibility"]
      , ["src/buildtool/logging", "log_level"]
      , ["src/buildtool/logging", "logging"]
@@ -290,7 +290,7 @@ index 00000000..1d54b9c1
 +#endif  // BOOTSTRAP_BUILD_TOOL
 +}
 diff --git a/src/buildtool/file_system/file_root.hpp b/src/buildtool/file_system/file_root.hpp
-index 08779e8e..04e17b34 100644
+index eff4d450..9c5dbe69 100644
 --- a/src/buildtool/file_system/file_root.hpp
 +++ b/src/buildtool/file_system/file_root.hpp
 @@ -31,8 +31,14 @@
@@ -308,7 +308,7 @@ index 08779e8e..04e17b34 100644
  /// FilteredIterator is an helper class to allow for iteration over
  /// directory-only or file-only entries stored inside the class
  /// DirectoryEntries. Internally, DirectoryEntries holds a
-@@ -514,6 +520,15 @@ class FileRoot {
+@@ -513,6 +519,15 @@ class FileRoot {
          return DirectoryEntries{DirectoryEntries::pairs_t{}};
      }
  
@@ -324,7 +324,7 @@ index 08779e8e..04e17b34 100644
      [[nodiscard]] auto BlobType(std::filesystem::path const& file_path)
          const noexcept -> std::optional<ObjectType> {
          if (std::holds_alternative<git_root_t>(root_)) {
-@@ -734,6 +749,7 @@ class FileRoot {
+@@ -733,6 +748,7 @@ class FileRoot {
      // directories instead of erroring out. This means implicitly also that
      // there are no more fast tree lookups, i.e., tree traversal is a must.
      bool ignore_special_{};
