@@ -3,7 +3,7 @@
 set -eu
 
 readonly ROOT="$(realpath $(dirname $0)/..)"
-readonly BASE_COMMIT="$(git merge-base patches justbuild/master)"
+readonly BASE_COMMIT="$(git merge-base patches justbuild/stable-1.3)"
 readonly PATCHDIR="${ROOT}/patches"
 
 ( cd "${PATCHDIR}"

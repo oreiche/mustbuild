@@ -20,7 +20,7 @@ if [ "$BRANCH" != "patches" ]; then
 fi
 
 ( cd "$ROOT"
-  git checkout master
+  git checkout stable-1.0
   ./etc/import.sh
   git add doc patches justbuild.commit
   if [ -z "$(git status --porcelain --untracked-files=no)" ]; then

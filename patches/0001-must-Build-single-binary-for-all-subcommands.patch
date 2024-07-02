@@ -863,7 +863,7 @@ index 7416bb7b..00000000
 -if __name__ == "__main__":
 -    main()
 diff --git a/etc/repos.json b/etc/repos.json
-index d339e874..6142eaf8 100644
+index d4e287c7..2e5bf0c0 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -1,6 +1,6 @@
@@ -2255,10 +2255,10 @@ index bc3a57dc..57f2d658 100644
                          location.dump(-1));
              return std::nullopt;
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index f7afb077..59b5aeba 100644
+index b7ca034c..020bef19 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
-@@ -435,6 +435,9 @@ class ExecutorImpl {
+@@ -436,6 +436,9 @@ class ExecutorImpl {
          -> std::optional<Artifact::ObjectInfo> {
          auto const* ws_root = repo_config->WorkspaceRoot(repo);
          if (ws_root == nullptr) {
