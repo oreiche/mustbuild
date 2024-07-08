@@ -219,11 +219,14 @@ be different from your project's file structure (see `stage` in
 their desired staging. Targets without any `stage` are considered to be located
 at the *stage root*.
 
-For debugging, specifying the *stage roots* in a [`gdbinit` file](./etc/gdbinit)
-might be useful. It helps mapping the debug information to your project's file
-structure.
+The rule
+[`["CC","install-with-deps"]`](https://github.com/just-buildsystem/rules-cc#rule-cc-install-with-deps)
+(see [install targets](#install-targets)) will automatically collect all related
+source and header files with their correct *stage root* when installing with
+`{"DEBUG":true}`. For debugging your code, just step into the install directory
+and run your binary with `gdb`.
 
 ```sh
-$ must install APPS -D'{"DEBUG":true}' -o .
-$ gdb -x etc/gdbinit ./bin/helloworld
+$ must install APPS -D'{"DEBUG":true}' -o out
+$ cd out; gdb ./bin/helloworld
 ```

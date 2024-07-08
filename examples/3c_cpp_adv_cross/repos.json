@@ -13,7 +13,7 @@
       "repository": {
         "type": "git",
         "branch": "master",
-        "commit": "2ea50063460a3e11dfcbb71651540c0d61fddc1a",
+        "commit": "5cfe9e48255086a953426b599c5bca4e0f33b589",
         "repository": "https://github.com/just-buildsystem/rules-cc",
         "subdir": "rules"
       }

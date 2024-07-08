@@ -246,3 +246,16 @@ INFO: Artifacts can be found in:
         .ext/include/gtest [5225df8651dadc1506b58cdda5df06be7375b986:560:t]
 # add .ext/include to your IDE's search paths
 ```
+
+## Debugging your code
+
+External libraries are fully supported for installing debug binaries. The rule
+[`["CC","install-with-deps"]`](https://github.com/just-buildsystem/rules-cc#rule-cc-install-with-deps)
+will also collect all related source and header files from external libraries
+when installing with `{"DEBUG":true}`. For debugging your code, just step into
+the install directory and run your binary with `gdb`.
+
+```sh
+$ must install APPS -D'{"USE_FMTLIB":true,"DEBUG":true}' -o out
+$ cd out; gdb ./bin/helloworld
+```

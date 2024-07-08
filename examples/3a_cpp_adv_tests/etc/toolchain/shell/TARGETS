@@ -1,0 +1,9 @@
+// Target definitions
+{
+  // 'defaults' target is used to set the default shell (needed by shell tests)
+  defaults: {
+    type: ['shell', 'defaults'],
+    sh: ['sh'],
+    PATH: ['/bin'],
+  },
+}

@@ -1,9 +1,0 @@
-# Use this file for debugging with GDB (run 'gdb -x etc/gdbinit <binary>').
-
-# Substitute prefixes from Justbuild C++ rules.
-set substitute-path work .
-set substitute-path include .
-
-# Add source directories (stage roots) to search path.
-dir apps
-dir libs
