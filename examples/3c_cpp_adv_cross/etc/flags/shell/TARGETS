@@ -1,0 +1,9 @@
+// Target definitions
+{
+  // 'defaults' target is used to set the default shell (needed by shell tests)
+  // -> based on toolchain shell defaults
+  defaults: {
+    type: ['shell', 'defaults'],
+    base: [['@', 'toolchain', 'shell', 'defaults']],
+  },
+}

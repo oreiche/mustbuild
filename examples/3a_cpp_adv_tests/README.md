@@ -129,7 +129,10 @@ test_helloworld: {
 },
 ```
 
-> Note that shell tests internally refer to a *launcher*, which requires to
+> Note that shell tests require a *shell toolchain*, which must be set
+> explicitly in [`etc/toolchain/shell/TARGETS`](./etc/toolchain/shell/TARGETS).
+
+> Also note that shell tests internally refer to a *launcher*, which requires to
 > create an empty module in the rule's target root at
 > [`etc/flags/shell/test/TARGETS`](./etc/flags/shell/test/TARGETS).
 
