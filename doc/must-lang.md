@@ -355,7 +355,7 @@ Get values from map as list.
 Example:
 ```jsonnet
 // evaluates to ["x","y"]
-keys(map({a:'x',b:'y'}))
+values(map({a:'x',b:'y'}))
 ```
 
 > See also [`map()`](#map).
@@ -414,7 +414,7 @@ of the position in the list, padded with leading zeros to length 10.
 `map_enum`(`list`: *list-expr*) -> *map-expr*
 
 | Argument | Description | Default value |
-|-|:-|
+|-|:-|:-:|
 | `list` | List-expression to generate the map from | None |
 
 Example:

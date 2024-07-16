@@ -83,7 +83,7 @@ index 00000000..19df5dee
 +}
 diff --git a/src/jsonnet/builtins.libsonnet b/src/jsonnet/builtins.libsonnet
 new file mode 100644
-index 00000000..a8b5be5f
+index 00000000..11fd2878
 --- /dev/null
 +++ b/src/jsonnet/builtins.libsonnet
 @@ -0,0 +1,1359 @@
@@ -562,7 +562,7 @@ index 00000000..a8b5be5f
 +/// Example:
 +/// ```jsonnet
 +/// // evaluates to ["x","y"]
-+/// keys(map({a:'x',b:'y'}))
++/// values(map({a:'x',b:'y'}))
 +/// ```
 +///
 +/// > See also [`map()`](#map).
@@ -636,7 +636,7 @@ index 00000000..a8b5be5f
 +/// `map_enum`(`list`: *list-expr*) -> *map-expr*
 +///
 +/// | Argument | Description | Default value |
-+/// |-|:-|
++/// |-|:-|:-:|
 +/// | `list` | List-expression to generate the map from | None |
 +///
 +/// Example:
