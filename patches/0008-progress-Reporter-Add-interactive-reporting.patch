@@ -377,7 +377,7 @@ diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
-@@ -139,6 +139,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -144,6 +144,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
      }
      if (log_args.plain_log) {
          cmd.emplace_back("--plain-log");
