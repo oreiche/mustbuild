@@ -11,7 +11,6 @@ Subject: [targets] Support bool and strings in TARGETS
  4 files changed, 48 insertions(+), 1 deletion(-)
 
 diff --git a/src/buildtool/build_engine/base_maps/field_reader.hpp b/src/buildtool/build_engine/base_maps/field_reader.hpp
-index f66c0b1b..bb8cf478 100644
 --- a/src/buildtool/build_engine/base_maps/field_reader.hpp
 +++ b/src/buildtool/build_engine/base_maps/field_reader.hpp
 @@ -141,8 +141,13 @@ class FieldReader {
@@ -30,7 +29,6 @@ index f66c0b1b..bb8cf478 100644
              (*logger_)(fmt::format("Field {} in {} {} is not a list",
                                     field_name,
 diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buildtool/build_engine/target_map/built_in_rules.cpp
-index 81f679e5..1ba7b88b 100644
 --- a/src/buildtool/build_engine/target_map/built_in_rules.cpp
 +++ b/src/buildtool/build_engine/target_map/built_in_rules.cpp
 @@ -1086,6 +1086,10 @@ void GenericRuleWithDeps(
@@ -78,7 +76,6 @@ index 81f679e5..1ba7b88b 100644
          (*logger)(fmt::format("sh has evaluate to list of strings or null, but "
                                "found {}",
 diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
-index 7bc74800..eb224b28 100644
 --- a/src/buildtool/build_engine/target_map/target_map.cpp
 +++ b/src/buildtool/build_engine/target_map/target_map.cpp
 @@ -440,6 +440,17 @@ void withDependencies(
@@ -118,7 +115,6 @@ index 7bc74800..eb224b28 100644
              (*logger)(fmt::format("Config field {} should evaluate to a list "
                                    "of strings, but got{}",
 diff --git a/src/buildtool/build_engine/target_map/utils.cpp b/src/buildtool/build_engine/target_map/utils.cpp
-index 91269833..fe3be967 100644
 --- a/src/buildtool/build_engine/target_map/utils.cpp
 +++ b/src/buildtool/build_engine/target_map/utils.cpp
 @@ -162,6 +162,10 @@ auto BuildMaps::Target::Utils::getTainted(

@@ -18,7 +18,6 @@ Subject: [verbose] Logger: Add LogLevel::Verbose
  11 files changed, 43 insertions(+), 18 deletions(-)
 
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index 4ba9426d..979db153 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
 @@ -255,6 +255,12 @@ static inline auto SetupLogArguments(
@@ -35,7 +34,6 @@ index 4ba9426d..979db153 100644
             "--restrict-stderr-log-limit",
             [clargs](auto const& limit) {
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index fbafa533..4b6335f2 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
 @@ -621,7 +621,7 @@ class ExecutorImpl {
@@ -48,7 +46,6 @@ index fbafa533..4b6335f2 100644
      }
  
 diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
-index 3d7571a0..b6a43202 100644
 --- a/src/buildtool/graph_traverser/graph_traverser.hpp
 +++ b/src/buildtool/graph_traverser/graph_traverser.hpp
 @@ -617,7 +617,7 @@ class GraphTraverser {
@@ -79,7 +76,6 @@ index 3d7571a0..b6a43202 100644
                          "target; will take subobject '{}' of '{}'",
                          *(clargs_.build.print_to_stdout),
 diff --git a/src/buildtool/logging/log_level.hpp b/src/buildtool/logging/log_level.hpp
-index 6323bde5..5e7f9acc 100644
 --- a/src/buildtool/logging/log_level.hpp
 +++ b/src/buildtool/logging/log_level.hpp
 @@ -28,6 +28,7 @@ enum class LogLevel {
@@ -100,7 +96,6 @@ index 6323bde5..5e7f9acc 100644
              return "DEBUG";
          case LogLevel::Trace:
 diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/log_sink_cmdline.hpp
-index 5c2e07e1..2a2dfac8 100644
 --- a/src/buildtool/logging/log_sink_cmdline.hpp
 +++ b/src/buildtool/logging/log_sink_cmdline.hpp
 @@ -140,6 +140,9 @@ class LogSinkCmdLine final : public ILogSink {
@@ -114,7 +109,6 @@ index 5c2e07e1..2a2dfac8 100644
                      style = fg(fmt::color::sky_blue);
                      break;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index 31bce148..20d45049 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
 @@ -613,6 +613,9 @@ auto DetermineRoots(gsl::not_null<RepositoryConfig*> const& repository_config,
@@ -187,7 +181,6 @@ index 31bce148..20d45049 100644
                                 ? kExitSuccessFailedArtifacts
                                 : kExitSuccess;
 diff --git a/src/buildtool/progress_reporting/exports_progress_reporter.cpp b/src/buildtool/progress_reporting/exports_progress_reporter.cpp
-index 30ca8935..ca3172c2 100644
 --- a/src/buildtool/progress_reporting/exports_progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/exports_progress_reporter.cpp
 @@ -49,6 +49,6 @@ auto ExportsProgressReporter::Reporter(gsl::not_null<Statistics*> const& stats,
@@ -199,7 +192,6 @@ index 30ca8935..ca3172c2 100644
          });
  }
 diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
-index 84720cf7..13e5192b 100644
 --- a/src/other_tools/just_mr/cli.hpp
 +++ b/src/other_tools/just_mr/cli.hpp
 @@ -280,6 +280,12 @@ static inline auto SetupMultiRepoLogArguments(
@@ -216,7 +208,6 @@ index 84720cf7..13e5192b 100644
             "--restrict-stderr-log-limit",
             [clargs](auto const& limit) {
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index c0c6b906..b8b8ef6a 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
 @@ -247,8 +247,9 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
@@ -232,7 +223,6 @@ index c0c6b906..b8b8ef6a 100644
      // create argv
      std::vector<char*> argv{};
 diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
-index 92ee796d..2b0de5eb 100644
 --- a/src/other_tools/just_mr/main.cpp
 +++ b/src/other_tools/just_mr/main.cpp
 @@ -226,6 +226,12 @@ auto main(int argc, char* argv[]) -> int {
@@ -249,7 +239,6 @@ index 92ee796d..2b0de5eb 100644
          // As the rc file can contain logging parameters, reset the logging
          // configuration
 diff --git a/src/other_tools/just_mr/setup.cpp b/src/other_tools/just_mr/setup.cpp
-index 6bb33117..68d7783c 100644
 --- a/src/other_tools/just_mr/setup.cpp
 +++ b/src/other_tools/just_mr/setup.cpp
 @@ -54,7 +54,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,

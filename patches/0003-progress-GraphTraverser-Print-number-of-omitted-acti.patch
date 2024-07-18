@@ -7,7 +7,6 @@ Subject: [progress] GraphTraverser: Print number of omitted actions
  1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
-index ef5316a6..3d7571a0 100644
 --- a/src/buildtool/graph_traverser/graph_traverser.hpp
 +++ b/src/buildtool/graph_traverser/graph_traverser.hpp
 @@ -465,11 +465,15 @@ class GraphTraverser {

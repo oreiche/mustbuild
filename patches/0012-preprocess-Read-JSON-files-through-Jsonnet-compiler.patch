@@ -13,7 +13,6 @@ Subject: [preprocess] Read JSON files through Jsonnet compiler
  create mode 100644 src/jsonnet/builtins.libsonnet
 
 diff --git a/src/buildtool/build_engine/base_maps/json_file_map.hpp b/src/buildtool/build_engine/base_maps/json_file_map.hpp
-index ad697ac9..d7c646e0 100644
 --- a/src/buildtool/build_engine/base_maps/json_file_map.hpp
 +++ b/src/buildtool/build_engine/base_maps/json_file_map.hpp
 @@ -95,7 +95,7 @@ auto CreateJsonFileMap(
@@ -26,7 +25,6 @@ index ad697ac9..d7c646e0 100644
              (*logger)(fmt::format("cannot read JSON file {}.",
                                    json_file_path.string()),
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
-index f53364a1..774fe445 100644
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
 @@ -157,7 +157,8 @@
@@ -40,7 +38,6 @@ index f53364a1..774fe445 100644
    , "deps":
      [ "git_tree"
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index c4093a65..a1ee9af3 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
 @@ -463,7 +463,7 @@ void SetupFileChunker() {

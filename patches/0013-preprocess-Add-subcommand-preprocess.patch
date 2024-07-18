@@ -13,7 +13,6 @@ Subject: [preprocess] Add subcommand 'preprocess'
  7 files changed, 118 insertions(+), 10 deletions(-)
 
 diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
-index d6318d20..3230807e 100644
 --- a/share/man/must-backend.5.md
 +++ b/share/man/must-backend.5.md
 @@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
@@ -85,7 +84,6 @@ index d6318d20..3230807e 100644
  -------------------
  
 diff --git a/share/man/must.1.md b/share/man/must.1.md
-index b87fb26a..4e8cdb29 100644
 --- a/share/man/must.1.md
 +++ b/share/man/must.1.md
 @@ -12,7 +12,7 @@ SYNOPSIS
@@ -98,7 +96,6 @@ index b87fb26a..4e8cdb29 100644
  DESCRIPTION
  ===========
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index 76a8a9d0..4ba9426d 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
 @@ -192,6 +192,11 @@ struct ToAddArguments {
@@ -132,7 +129,6 @@ index 76a8a9d0..4ba9426d 100644
                                      gsl::not_null<GcArguments*> const& args) {
      app->add_flag("--no-rotate",
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index d38c1d30..eac04f3d 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
 @@ -170,6 +170,15 @@ auto SetupServeServiceCommandArguments(
@@ -195,7 +191,6 @@ index d38c1d30..eac04f3d 100644
      return clargs;
  }
 diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
-index 5b287fa1..ea71dca9 100644
 --- a/src/buildtool/main/cli.hpp
 +++ b/src/buildtool/main/cli.hpp
 @@ -34,7 +34,8 @@ enum class SubCommand {
@@ -217,7 +212,6 @@ index 5b287fa1..ea71dca9 100644
      GcArguments gc;
      ToAddArguments to_add;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index a1ee9af3..31bce148 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
 @@ -496,11 +496,12 @@ void SetupFileChunker() {
@@ -294,7 +288,6 @@ index a1ee9af3..31bce148 100644
          // serve endpoint, if given
          if (not RemoteExecutionConfig::RemoteAddress() and
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
-index 6963b068..895cc402 100644
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
 @@ -147,7 +147,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{

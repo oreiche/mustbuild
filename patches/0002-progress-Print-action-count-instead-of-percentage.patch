@@ -7,7 +7,6 @@ Subject: [progress] Print action count instead of percentage
  1 file changed, 5 insertions(+), 9 deletions(-)
 
 diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
-index 94280fe0..2e8de0a4 100644
 --- a/src/buildtool/progress_reporting/progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/progress_reporter.cpp
 @@ -25,6 +25,7 @@ auto ProgressReporter::Reporter(gsl::not_null<Statistics*> const& stats,

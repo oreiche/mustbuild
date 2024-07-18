@@ -10,7 +10,6 @@ Subject: [progress] Logger: Add support for volatile log messages
  4 files changed, 86 insertions(+), 11 deletions(-)
 
 diff --git a/src/buildtool/logging/log_sink.hpp b/src/buildtool/logging/log_sink.hpp
-index f80b955c..e33c71c4 100644
 --- a/src/buildtool/logging/log_sink.hpp
 +++ b/src/buildtool/logging/log_sink.hpp
 @@ -37,9 +37,11 @@ class ILogSink {
@@ -27,7 +26,6 @@ index f80b955c..e33c71c4 100644
    protected:
      /// \brief Helper class for line iteration with std::istream_iterator.
 diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/log_sink_cmdline.hpp
-index 89990f1c..4219f95c 100644
 --- a/src/buildtool/logging/log_sink_cmdline.hpp
 +++ b/src/buildtool/logging/log_sink_cmdline.hpp
 @@ -15,6 +15,7 @@
@@ -90,7 +88,6 @@ index 89990f1c..4219f95c 100644
                  fmt::print(stderr, "{}\n", prefix);
                  prefix = cont_prefix;
 diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log_sink_file.hpp
-index f99ce769..20313463 100644
 --- a/src/buildtool/logging/log_sink_file.hpp
 +++ b/src/buildtool/logging/log_sink_file.hpp
 @@ -99,7 +99,8 @@ class LogSinkFile final : public ILogSink {
@@ -104,7 +101,6 @@ index f99ce769..20313463 100644
          timespec ts{};
          clock_gettime(CLOCK_REALTIME, &ts);
 diff --git a/src/buildtool/logging/logger.hpp b/src/buildtool/logging/logger.hpp
-index bc380e6a..07900d8f 100644
 --- a/src/buildtool/logging/logger.hpp
 +++ b/src/buildtool/logging/logger.hpp
 @@ -72,8 +72,12 @@ class Logger {
