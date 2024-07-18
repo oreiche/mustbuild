@@ -8,7 +8,6 @@ Subject: [misc] Create fetch dir if not existing
  2 files changed, 11 insertions(+), 14 deletions(-)
 
 diff --git a/share/man/must.1.md b/share/man/must.1.md
-index 4e8cdb29..b521af12 100644
 --- a/share/man/must.1.md
 +++ b/share/man/must.1.md
 @@ -270,9 +270,8 @@ from the configuration is used. To perform the fetch for all
@@ -24,7 +23,6 @@ index 4e8cdb29..b521af12 100644
  directories, use the **`-o`** option.
  
 diff --git a/src/other_tools/just_mr/fetch.cpp b/src/other_tools/just_mr/fetch.cpp
-index f2c3e8a9..59556346 100644
 --- a/src/other_tools/just_mr/fetch.cpp
 +++ b/src/other_tools/just_mr/fetch.cpp
 @@ -47,19 +47,17 @@ auto MultiRepoFetch(std::shared_ptr<Configuration> const& config,

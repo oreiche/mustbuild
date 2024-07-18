@@ -14,7 +14,6 @@ Subject: [preprocess] FileRoot: Use Jsonnet for reading files
  create mode 100644 src/buildtool/file_system/file_root.cpp
 
 diff --git a/etc/dev/TARGETS b/etc/dev/TARGETS
-index 3d194b96..c3bd22b8 100644
 --- a/etc/dev/TARGETS
 +++ b/etc/dev/TARGETS
 @@ -19,6 +19,7 @@
@@ -26,7 +25,6 @@ index 3d194b96..c3bd22b8 100644
      , ["", "libcurl"]
      , ["", "libarchive"]
 diff --git a/etc/repos.json b/etc/repos.json
-index ad0430ca..7f2cbe16 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -16,6 +16,7 @@
@@ -38,7 +36,6 @@ index ad0430ca..7f2cbe16 100644
      , "bootstrap": {"link": ["-pthread"]}
      , "bootstrap_local": {"link": ["-pthread"]}
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
-index b8b86d29..6cad73eb 100644
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
 @@ -146,7 +146,8 @@
@@ -290,7 +287,6 @@ index 00000000..1d54b9c1
 +#endif  // BOOTSTRAP_BUILD_TOOL
 +}
 diff --git a/src/buildtool/file_system/file_root.hpp b/src/buildtool/file_system/file_root.hpp
-index eff4d450..9c5dbe69 100644
 --- a/src/buildtool/file_system/file_root.hpp
 +++ b/src/buildtool/file_system/file_root.hpp
 @@ -31,8 +31,14 @@
