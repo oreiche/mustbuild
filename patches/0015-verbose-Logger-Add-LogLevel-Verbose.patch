@@ -210,7 +210,7 @@ diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
-@@ -247,8 +247,9 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -252,8 +252,9 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
          cmd.emplace_back(*it);
      }
  

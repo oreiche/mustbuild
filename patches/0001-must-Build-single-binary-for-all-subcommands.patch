@@ -27,14 +27,14 @@ Subject: [must] Build single binary for all subcommands
  src/buildtool/storage/config.hpp              |  11 +-
  src/other_tools/just_mr/TARGETS               |   7 +-
  src/other_tools/just_mr/cli.hpp               |  18 +-
- src/other_tools/just_mr/launch.cpp            |  55 ++-
+ src/other_tools/just_mr/launch.cpp            |  62 +--
  src/other_tools/just_mr/main.cpp              |  51 ++-
  src/other_tools/just_mr/rc.cpp                |  36 +-
  src/other_tools/just_mr/rc.hpp                |   2 +-
  src/other_tools/just_mr/setup.cpp             |   3 +-
  src/other_tools/just_mr/setup_utils.cpp       |   3 +-
  src/other_tools/just_mr/utils.hpp             |  40 +-
- 31 files changed, 432 insertions(+), 1287 deletions(-)
+ 31 files changed, 438 insertions(+), 1288 deletions(-)
  delete mode 100755 bin/just-deduplicate-repos.py
  delete mode 100755 bin/just-import-git.py
  delete mode 100644 share/man/just-deduplicate-repos.1.md
@@ -2549,7 +2549,20 @@ diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch
  auto CallJust(std::optional<std::filesystem::path> const& config_file,
                MultiRepoCommonArguments const& common_args,
                MultiRepoSetupArguments const& setup_args,
-@@ -65,25 +68,25 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -58,32 +61,37 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+     std::optional<std::filesystem::path> mr_config_path{std::nullopt};
+ 
+     std::optional<LockFile> lock{};
+-    if (subcommand and kKnownJustSubcommands.contains(*subcommand)) {
++    auto last_arg = just_cmd_args.additional_just_args.empty()
++                        ? std::string{}
++                        : *just_cmd_args.additional_just_args.rbegin();
++    if (subcommand and kKnownJustSubcommands.contains(*subcommand) and
++        // do not setup the mr-config for printing the help dialog
++        last_arg != "-h" and last_arg != "--help") {
+         // Read the config file if needed
+         if (kKnownJustSubcommands.at(*subcommand).config) {
+             lock = GarbageCollector::SharedLock();
              if (not lock) {
                  return kExitGenericFailure;
              }
@@ -2593,7 +2606,7 @@ diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch
              }
          }
          use_build_root = kKnownJustSubcommands.at(*subcommand).build_root;
-@@ -96,11 +99,12 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -96,11 +104,12 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
          supports_dispatch = kKnownJustSubcommands.at(*subcommand).dispatch;
      }
      // build just command
@@ -2608,7 +2621,7 @@ diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch
          cmd.emplace_back("-C");
          cmd.emplace_back(mr_config_path->string());
      }
-@@ -230,7 +234,7 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -230,7 +239,7 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
      }
  
      Logger::Log(
@@ -2617,7 +2630,7 @@ diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch
  
      // create argv
      std::vector<char*> argv{};
-@@ -238,11 +242,6 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -238,11 +247,6 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
                     std::end(cmd),
                     std::back_inserter(argv),
                     [](auto& str) { return str.data(); });
