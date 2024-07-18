@@ -49,7 +49,6 @@ Subject: [must] Build single binary for all subcommands
  rename share/{just_complete.bash => must_complete.bash} (79%)
 
 diff --git a/TARGETS b/TARGETS
-index dc5f0817..682d0745 100644
 --- a/TARGETS
 +++ b/TARGETS
 @@ -1,7 +1,7 @@
@@ -142,7 +141,6 @@ index dc5f0817..682d0745 100644
      { "type": "let*"
      , "bindings":
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 3f6e72c8..d0020354 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -38,10 +38,10 @@ DEBUG = os.environ.get("DEBUG")
@@ -863,7 +861,6 @@ index 7416bb7b..00000000
 -if __name__ == "__main__":
 -    main()
 diff --git a/etc/repos.json b/etc/repos.json
-index d4e287c7..2e5bf0c0 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -1,6 +1,6 @@
@@ -1086,7 +1083,6 @@ diff --git a/share/man/just-repository-config.5.md b/share/man/must-backend-conf
 similarity index 91%
 rename from share/man/just-repository-config.5.md
 rename to share/man/must-backend-config.5.md
-index 96fbb84d..95093a4e 100644
 --- a/share/man/just-repository-config.5.md
 +++ b/share/man/must-backend-config.5.md
 @@ -1,15 +1,15 @@
@@ -1139,7 +1135,6 @@ diff --git a/share/man/just.1.md b/share/man/must-backend.5.md
 similarity index 93%
 rename from share/man/just.1.md
 rename to share/man/must-backend.5.md
-index ccd1964e..d6318d20 100644
 --- a/share/man/just.1.md
 +++ b/share/man/must-backend.5.md
 @@ -1,29 +1,28 @@
@@ -1330,7 +1325,6 @@ diff --git a/share/man/just-graph-file.5.md b/share/man/must-graph-file.5.md
 similarity index 97%
 rename from share/man/just-graph-file.5.md
 rename to share/man/must-graph-file.5.md
-index 06f41558..2e8d8307 100644
 --- a/share/man/just-graph-file.5.md
 +++ b/share/man/must-graph-file.5.md
 @@ -1,9 +1,9 @@
@@ -1364,7 +1358,6 @@ diff --git a/share/man/just-mr-repository-config.5.md b/share/man/must-repositor
 similarity index 93%
 rename from share/man/just-mr-repository-config.5.md
 rename to share/man/must-repository-config.5.md
-index 90ae5055..5778b0eb 100644
 --- a/share/man/just-mr-repository-config.5.md
 +++ b/share/man/must-repository-config.5.md
 @@ -1,17 +1,17 @@
@@ -1447,7 +1440,6 @@ diff --git a/share/man/just-serve-config.5.md b/share/man/must-serve-config.5.md
 similarity index 89%
 rename from share/man/just-serve-config.5.md
 rename to share/man/must-serve-config.5.md
-index 7274d661..bdc355b8 100644
 --- a/share/man/just-serve-config.5.md
 +++ b/share/man/must-serve-config.5.md
 @@ -1,10 +1,10 @@
@@ -1539,7 +1531,6 @@ diff --git a/share/man/just-mr.1.md b/share/man/must.1.md
 similarity index 68%
 rename from share/man/just-mr.1.md
 rename to share/man/must.1.md
-index ea420a97..b87fb26a 100644
 --- a/share/man/just-mr.1.md
 +++ b/share/man/must.1.md
 @@ -1,31 +1,30 @@
@@ -1863,7 +1854,6 @@ diff --git a/share/man/just-mrrc.5.md b/share/man/mustrc.5.md
 similarity index 73%
 rename from share/man/just-mrrc.5.md
 rename to share/man/mustrc.5.md
-index 8ebaff18..50cec1df 100644
 --- a/share/man/just-mrrc.5.md
 +++ b/share/man/mustrc.5.md
 @@ -1,10 +1,10 @@
@@ -2086,7 +2076,6 @@ diff --git a/share/just_complete.bash b/share/must_complete.bash
 similarity index 79%
 rename from share/just_complete.bash
 rename to share/must_complete.bash
-index 7a7c00c0..afd995c6 100644
 --- a/share/just_complete.bash
 +++ b/share/must_complete.bash
 @@ -12,17 +12,17 @@
@@ -2242,7 +2231,6 @@ index 7a7c00c0..afd995c6 100644
 -complete -F _just-mr_completion just-mr
 +complete -F _must_completion must
 diff --git a/src/buildtool/common/location.cpp b/src/buildtool/common/location.cpp
-index bc3a57dc..57f2d658 100644
 --- a/src/buildtool/common/location.cpp
 +++ b/src/buildtool/common/location.cpp
 @@ -34,7 +34,7 @@ auto ReadLocationObject(nlohmann::json const& location,
@@ -2255,7 +2243,6 @@ index bc3a57dc..57f2d658 100644
                          location.dump(-1));
              return std::nullopt;
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
-index b7ca034c..020bef19 100644
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
 @@ -436,6 +436,9 @@ class ExecutorImpl {
@@ -2269,7 +2256,6 @@ index b7ca034c..020bef19 100644
          }
          auto const object_type = ws_root->BlobType(file_path);
 diff --git a/src/buildtool/main/TARGETS b/src/buildtool/main/TARGETS
-index 91f711ac..9ba4897c 100644
 --- a/src/buildtool/main/TARGETS
 +++ b/src/buildtool/main/TARGETS
 @@ -1,9 +1,6 @@
@@ -2308,7 +2294,6 @@ index 91f711ac..9ba4897c 100644
  , "retry":
    { "type": ["@", "rules", "CC", "library"]
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index 759c7124..d38c1d30 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
 @@ -14,6 +14,8 @@
@@ -2374,7 +2359,6 @@ index 759c7124..d38c1d30 100644
      SetupDescribeCommandArguments(cmd_describe, &clargs);
      SetupAnalyseCommandArguments(cmd_analyse, &clargs);
 diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
-index e03e9bec..5b287fa1 100644
 --- a/src/buildtool/main/cli.hpp
 +++ b/src/buildtool/main/cli.hpp
 @@ -17,6 +17,10 @@
@@ -2394,7 +2378,6 @@ index e03e9bec..5b287fa1 100644
  #endif
 +#endif
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index a5185a47..11bc3925 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
 @@ -551,8 +551,10 @@ void SetupFileChunker() {
@@ -2423,7 +2406,6 @@ index a5185a47..11bc3925 100644
      try {
          auto arguments = ParseCommandLineArguments(argc, argv);
 diff --git a/src/buildtool/storage/config.hpp b/src/buildtool/storage/config.hpp
-index c1151c3f..4f3830f7 100644
 --- a/src/buildtool/storage/config.hpp
 +++ b/src/buildtool/storage/config.hpp
 @@ -45,10 +45,15 @@
@@ -2454,7 +2436,6 @@ index c1151c3f..4f3830f7 100644
  
      [[nodiscard]] static auto SetBuildRoot(
 diff --git a/src/other_tools/just_mr/TARGETS b/src/other_tools/just_mr/TARGETS
-index be03021d..6f671694 100644
 --- a/src/other_tools/just_mr/TARGETS
 +++ b/src/other_tools/just_mr/TARGETS
 @@ -1,8 +1,9 @@
@@ -2486,7 +2467,6 @@ index be03021d..6f671694 100644
      , ["src/buildtool/logging", "logging"]
      , ["src/buildtool/multithreading", "task_system"]
 diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
-index cf4b0346..026d52f7 100644
 --- a/src/other_tools/just_mr/cli.hpp
 +++ b/src/other_tools/just_mr/cli.hpp
 @@ -46,7 +46,6 @@ struct MultiRepoCommonArguments {
@@ -2557,7 +2537,6 @@ index cf4b0346..026d52f7 100644
          ->trigger_on_parse();  // run callback on all instances while parsing,
                                 // not after all parsing is done
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index 693d8808..34597bec 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
 @@ -29,6 +29,9 @@
@@ -2653,7 +2632,6 @@ index 693d8808..34597bec 100644
 +    return backend_main(argv.size(), argv.data());
  }
 diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
-index 31f63d3d..d4f08290 100644
 --- a/src/other_tools/just_mr/main.cpp
 +++ b/src/other_tools/just_mr/main.cpp
 @@ -34,6 +34,7 @@
@@ -2773,7 +2751,6 @@ index 31f63d3d..d4f08290 100644
          // Run subcommand `setup` or `setup-env`
          if (arguments.cmd == SubCommand::kSetup or
 diff --git a/src/other_tools/just_mr/rc.cpp b/src/other_tools/just_mr/rc.cpp
-index 89fb8ef2..ddffb9e0 100644
 --- a/src/other_tools/just_mr/rc.cpp
 +++ b/src/other_tools/just_mr/rc.cpp
 @@ -27,6 +27,8 @@
@@ -2873,7 +2850,6 @@ index 89fb8ef2..ddffb9e0 100644
                          cmd_name,
                          arg->ToString());
 diff --git a/src/other_tools/just_mr/rc.hpp b/src/other_tools/just_mr/rc.hpp
-index fe8e3d89..0c8568f5 100644
 --- a/src/other_tools/just_mr/rc.hpp
 +++ b/src/other_tools/just_mr/rc.hpp
 @@ -24,6 +24,6 @@
@@ -2885,7 +2861,6 @@ index fe8e3d89..0c8568f5 100644
      -> std::optional<std::filesystem::path>;
  #endif
 diff --git a/src/other_tools/just_mr/setup.cpp b/src/other_tools/just_mr/setup.cpp
-index 0479d0e5..4c3dd31c 100644
 --- a/src/other_tools/just_mr/setup.cpp
 +++ b/src/other_tools/just_mr/setup.cpp
 @@ -230,8 +230,7 @@ auto MultiRepoSetup(std::shared_ptr<Configuration> const& config,
@@ -2899,7 +2874,6 @@ index 0479d0e5..4c3dd31c 100644
      auto distdir_git_map =
          CreateDistdirGitMap(&content_cas_map,
 diff --git a/src/other_tools/just_mr/setup_utils.cpp b/src/other_tools/just_mr/setup_utils.cpp
-index 7c78533c..2533d7a2 100644
 --- a/src/other_tools/just_mr/setup_utils.cpp
 +++ b/src/other_tools/just_mr/setup_utils.cpp
 @@ -148,8 +148,7 @@ auto ReadConfiguration(
@@ -2913,7 +2887,6 @@ index 7c78533c..2533d7a2 100644
      auto const& config_file = *config_file_opt;
  
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
-index f470ee61..6963b068 100644
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
 @@ -29,13 +29,16 @@

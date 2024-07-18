@@ -8,7 +8,6 @@ Subject: [misc] Introduce separate versioning
  1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/src/buildtool/main/version.cpp b/src/buildtool/main/version.cpp
-index c327e4f9..2a827bb7 100644
 --- a/src/buildtool/main/version.cpp
 +++ b/src/buildtool/main/version.cpp
 @@ -21,20 +21,24 @@

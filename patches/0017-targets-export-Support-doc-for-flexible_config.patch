@@ -8,7 +8,6 @@ Subject: [targets] export: Support doc for flexible_config
  2 files changed, 42 insertions(+), 4 deletions(-)
 
 diff --git a/src/buildtool/build_engine/target_map/export.cpp b/src/buildtool/build_engine/target_map/export.cpp
-index e92d4c9c..d44dbcd8 100644
 --- a/src/buildtool/build_engine/target_map/export.cpp
 +++ b/src/buildtool/build_engine/target_map/export.cpp
 @@ -14,8 +14,11 @@
@@ -49,7 +48,6 @@ index e92d4c9c..d44dbcd8 100644
          return;
      }
 diff --git a/src/buildtool/main/describe.cpp b/src/buildtool/main/describe.cpp
-index 659ec3ab..3c2b98c0 100644
 --- a/src/buildtool/main/describe.cpp
 +++ b/src/buildtool/main/describe.cpp
 @@ -16,6 +16,7 @@

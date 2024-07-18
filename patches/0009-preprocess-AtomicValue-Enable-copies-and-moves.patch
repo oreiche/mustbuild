@@ -7,7 +7,6 @@ Subject: [preprocess] AtomicValue: Enable copies and moves
  1 file changed, 32 insertions(+), 3 deletions(-)
 
 diff --git a/src/buildtool/multithreading/atomic_value.hpp b/src/buildtool/multithreading/atomic_value.hpp
-index b8437cc7..4ae8dfe7 100644
 --- a/src/buildtool/multithreading/atomic_value.hpp
 +++ b/src/buildtool/multithreading/atomic_value.hpp
 @@ -22,16 +22,30 @@
