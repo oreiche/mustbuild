@@ -36,7 +36,7 @@ diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
 diff --git a/src/buildtool/execution_engine/executor/executor.hpp b/src/buildtool/execution_engine/executor/executor.hpp
 --- a/src/buildtool/execution_engine/executor/executor.hpp
 +++ b/src/buildtool/execution_engine/executor/executor.hpp
-@@ -607,7 +607,7 @@ class ExecutorImpl {
+@@ -610,7 +610,7 @@ class ExecutorImpl {
              }
              return message;
          };
@@ -225,7 +225,7 @@ diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch
 diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
 --- a/src/other_tools/just_mr/main.cpp
 +++ b/src/other_tools/just_mr/main.cpp
-@@ -226,6 +226,12 @@ auto main(int argc, char* argv[]) -> int {
+@@ -229,6 +229,12 @@ auto main(int argc, char* argv[]) -> int {
          }
  
          SetupLogging(arguments.log);

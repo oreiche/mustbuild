@@ -96,7 +96,7 @@ diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtoo
          if (not field_value->IsList()) {
              (*logger)(fmt::format("String field {} should be a list of "
                                    "strings, but found {}",
-@@ -1018,6 +1029,17 @@ void withRuleDefinition(
+@@ -1031,6 +1042,17 @@ void withRuleDefinition(
          if (not field_value) {
              return;
          }

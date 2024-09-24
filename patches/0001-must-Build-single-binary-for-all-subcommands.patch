@@ -2714,7 +2714,7 @@ diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
      app.require_subcommand(1);
  
      CommandLineArguments clargs;
-@@ -230,9 +236,6 @@ auto main(int argc, char* argv[]) -> int {
+@@ -233,9 +239,6 @@ auto main(int argc, char* argv[]) -> int {
  
          // if optional args were not read from just-mrrc or given by user, use
          // the defaults
@@ -2724,7 +2724,7 @@ diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
          if (not arguments.common.git_path) {
              arguments.common.git_path = kDefaultGitPath;
          }
-@@ -240,8 +243,11 @@ auto main(int argc, char* argv[]) -> int {
+@@ -243,8 +246,11 @@ auto main(int argc, char* argv[]) -> int {
          if (not arguments.common.just_mr_paths->root) {
              forward_build_root = false;
              arguments.common.just_mr_paths->root =
@@ -2738,7 +2738,7 @@ diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
          }
          if (not arguments.common.checkout_locations_file and
              FileSystemManager::IsFile(std::filesystem::weakly_canonical(
-@@ -250,6 +256,13 @@ auto main(int argc, char* argv[]) -> int {
+@@ -253,6 +259,13 @@ auto main(int argc, char* argv[]) -> int {
                  std::filesystem::weakly_canonical(
                      std::filesystem::absolute(kDefaultCheckoutLocationsFile));
          }
@@ -2752,7 +2752,7 @@ diff --git a/src/other_tools/just_mr/main.cpp b/src/other_tools/just_mr/main.cpp
          if (arguments.common.just_mr_paths->distdirs.empty()) {
              arguments.common.just_mr_paths->distdirs.emplace_back(
                  kDefaultDistdirs);
-@@ -356,6 +369,10 @@ auto main(int argc, char* argv[]) -> int {
+@@ -359,6 +372,10 @@ auto main(int argc, char* argv[]) -> int {
          // The remaining options all need the config file
          auto config = JustMR::Utils::ReadConfiguration(
              config_file, arguments.common.absent_repository_file);
