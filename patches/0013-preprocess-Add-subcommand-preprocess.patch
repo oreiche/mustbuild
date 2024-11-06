@@ -36,7 +36,7 @@ diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
  **`analyse`**|**`build`**|**`install`**
  ---------------------------------------
  
-@@ -425,29 +432,29 @@ Path to local log file. **`must`** will store the information printed on
+@@ -430,29 +437,29 @@ Path to local log file. **`must`** will store the information printed on
  stderr in the log file along with the thread id and timestamp when the
  output has been generated.  
  Supported by:
@@ -71,7 +71,7 @@ diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
  
  **`--expression-log-limit`** *`NUM`*  
  In error messages, truncate the entries in the enumeration of the active
-@@ -528,6 +535,11 @@ Ensure that all installed artifacts are available in local CAS as well,
+@@ -533,6 +540,11 @@ Ensure that all installed artifacts are available in local CAS as well,
  even when using remote execution.  
  Supported by: install|traverse|install-cas.
  
@@ -98,8 +98,8 @@ diff --git a/share/man/must.1.md b/share/man/must.1.md
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -192,6 +192,11 @@ struct ToAddArguments {
-     bool follow_symlinks{};
+@@ -199,6 +199,11 @@ struct ProtocolArguments final {
+     HashFunction::Type hash_type = HashFunction::Type::GitSHA1;
  };
  
 +struct PreprocessArguments {
@@ -110,7 +110,7 @@ diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
  static inline auto SetupCommonArguments(
      gsl::not_null<CLI::App*> const& app,
      gsl::not_null<CommonArguments*> const& clargs) {
-@@ -776,6 +781,17 @@ static inline auto SetupServeArguments(
+@@ -801,6 +806,17 @@ static inline auto SetupServeArguments(
          ->required();
  }
  
@@ -193,7 +193,7 @@ diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
 diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
 --- a/src/buildtool/main/cli.hpp
 +++ b/src/buildtool/main/cli.hpp
-@@ -34,7 +34,8 @@ enum class SubCommand {
+@@ -36,7 +36,8 @@ enum class SubCommand : std::uint8_t {
      kTraverse,
      kGc,
      kExecute,
@@ -203,7 +203,7 @@ diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
  };
  
  struct CommandLineArguments {
-@@ -56,6 +57,7 @@ struct CommandLineArguments {
+@@ -57,6 +58,7 @@ struct CommandLineArguments {
      ServerAuthArguments sauth;
      ServiceArguments service;
      ServeArguments serve;
@@ -214,7 +214,7 @@ diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -496,11 +496,12 @@ void SetupFileChunker() {
+@@ -454,11 +454,12 @@ void StoreTargetCacheShard(
          .config = std::move(config)};
  }
  
@@ -229,7 +229,7 @@ diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
      } catch (std::exception const& e) {
          Logger::Log(LogLevel::Warning,
                      "Failed to determine current working directory ({})",
-@@ -855,6 +856,57 @@ auto main(int argc, char* argv[]) -> int {
+@@ -920,6 +921,57 @@ auto main(int argc, char* argv[]) -> int {
              return kExitFailure;
          }
  
@@ -285,12 +285,12 @@ diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
 +        }
 +
          // If no execution endpoint was given, the client should default to the
-         // serve endpoint, if given
-         if (not RemoteExecutionConfig::RemoteAddress() and
+         // serve endpoint, if given.
+         if (not arguments.endpoint.remote_execution_address.has_value() and
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
-@@ -147,7 +147,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+@@ -148,7 +148,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
        .remote = true,
        .remote_props = true,
        .serve = false,

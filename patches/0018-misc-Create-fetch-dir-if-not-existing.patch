@@ -25,7 +25,7 @@ diff --git a/share/man/must.1.md b/share/man/must.1.md
 diff --git a/src/other_tools/just_mr/fetch.cpp b/src/other_tools/just_mr/fetch.cpp
 --- a/src/other_tools/just_mr/fetch.cpp
 +++ b/src/other_tools/just_mr/fetch.cpp
-@@ -50,19 +50,17 @@ auto MultiRepoFetch(std::shared_ptr<Configuration> const& config,
+@@ -70,19 +70,17 @@ auto MultiRepoFetch(std::shared_ptr<Configuration> const& config,
      // find fetch dir
      auto fetch_dir = fetch_args.fetch_dir;
      if (not fetch_dir) {

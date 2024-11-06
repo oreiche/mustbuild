@@ -17,8 +17,8 @@ diff --git a/src/buildtool/main/version.cpp b/src/buildtool/main/version.cpp
 -    std::size_t minor = 4;
 +    std::size_t minor = 1;
      std::size_t revision = 0;
-     std::string suffix = "~alpha";
-+    std::string upstream = "@JB.1.4.0~alpha";
+     std::string suffix = std::string{};
++    std::string upstream = "@JB.1.4.0";
 +
  #ifdef VERSION_EXTRA_SUFFIX
      suffix += VERSION_EXTRA_SUFFIX;

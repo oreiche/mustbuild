@@ -31,7 +31,7 @@ diff --git a/src/buildtool/build_engine/base_maps/field_reader.hpp b/src/buildto
 diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buildtool/build_engine/target_map/built_in_rules.cpp
 --- a/src/buildtool/build_engine/target_map/built_in_rules.cpp
 +++ b/src/buildtool/build_engine/target_map/built_in_rules.cpp
-@@ -1086,6 +1086,10 @@ void GenericRuleWithDeps(
+@@ -1089,6 +1089,10 @@ void GenericRuleWithDeps(
          if (not outs_value) {
              return;
          }
@@ -42,7 +42,7 @@ diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buil
          if (not outs_value->IsList()) {
              (*logger)(fmt::format("outs has to evaluate to a list of "
                                    "strings, but found {}",
-@@ -1116,6 +1120,10 @@ void GenericRuleWithDeps(
+@@ -1119,6 +1123,10 @@ void GenericRuleWithDeps(
          if (not out_dirs_value) {
              return;
          }
@@ -53,7 +53,7 @@ diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buil
          if (not out_dirs_value->IsList()) {
              (*logger)(fmt::format("out_dirs has to evaluate to a list of "
                                    "strings, but found {}",
-@@ -1175,6 +1183,10 @@ void GenericRuleWithDeps(
+@@ -1178,6 +1186,10 @@ void GenericRuleWithDeps(
      if (not cmd_value) {
          return;
      }
@@ -64,7 +64,7 @@ diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buil
      if (not cmd_value->IsList()) {
          (*logger)(fmt::format(
                        "cmds has to evaluate to a list of strings, but found {}",
-@@ -1237,6 +1249,10 @@ void GenericRuleWithDeps(
+@@ -1265,6 +1277,10 @@ void GenericRuleWithDeps(
      if (sh_val->IsNone()) {
          sh_val = Expression::kEmptyList;
      }
@@ -78,7 +78,7 @@ diff --git a/src/buildtool/build_engine/target_map/built_in_rules.cpp b/src/buil
 diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtool/build_engine/target_map/target_map.cpp
 --- a/src/buildtool/build_engine/target_map/target_map.cpp
 +++ b/src/buildtool/build_engine/target_map/target_map.cpp
-@@ -440,6 +440,17 @@ void withDependencies(
+@@ -444,6 +444,17 @@ void withDependencies(
          if (not field_value) {
              return;
          }
@@ -96,7 +96,7 @@ diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtoo
          if (not field_value->IsList()) {
              (*logger)(fmt::format("String field {} should be a list of "
                                    "strings, but found {}",
-@@ -1041,6 +1052,17 @@ void withRuleDefinition(
+@@ -1078,6 +1089,17 @@ void withRuleDefinition(
          if (not field_value) {
              return;
          }
@@ -117,7 +117,7 @@ diff --git a/src/buildtool/build_engine/target_map/target_map.cpp b/src/buildtoo
 diff --git a/src/buildtool/build_engine/target_map/utils.cpp b/src/buildtool/build_engine/target_map/utils.cpp
 --- a/src/buildtool/build_engine/target_map/utils.cpp
 +++ b/src/buildtool/build_engine/target_map/utils.cpp
-@@ -162,6 +162,10 @@ auto BuildMaps::Target::Utils::getTainted(
+@@ -205,6 +205,10 @@ auto BuildMaps::Target::Utils::getTainted(
      if (not tainted_val) {
          return false;
      }

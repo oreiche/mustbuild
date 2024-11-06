@@ -27,7 +27,7 @@ diff --git a/src/buildtool/build_engine/base_maps/json_file_map.hpp b/src/buildt
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
-@@ -157,7 +157,8 @@
+@@ -163,7 +163,8 @@
  , "file_root":
    { "type": ["@", "rules", "CC", "library"]
    , "name": ["file_root"]
@@ -36,11 +36,11 @@ diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGE
 +  , "private-hdrs": [["src/jsonnet", "builtins.h"]]
    , "srcs": ["file_root.cpp"]
    , "deps":
-     [ "git_tree"
+     [ "file_system_manager"
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -463,7 +463,7 @@ void SetupFileChunker() {
+@@ -421,7 +421,7 @@ void StoreTargetCacheShard(
          Logger::Log(LogLevel::Error, "Expected file at {}.", target_file);
          std::exit(kExitFailure);
      }

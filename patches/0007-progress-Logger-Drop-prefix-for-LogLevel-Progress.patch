@@ -11,7 +11,7 @@ Subject: [progress] Logger: Drop prefix for LogLevel::Progress
 diff --git a/src/buildtool/logging/log_level.hpp b/src/buildtool/logging/log_level.hpp
 --- a/src/buildtool/logging/log_level.hpp
 +++ b/src/buildtool/logging/log_level.hpp
-@@ -68,7 +68,7 @@ constexpr auto kLastLogLevel = LogLevel::Trace;
+@@ -69,7 +69,7 @@ constexpr auto kLastLogLevel = LogLevel::Trace;
          case LogLevel::Info:
              return "INFO";
          case LogLevel::Progress:
@@ -52,7 +52,7 @@ diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/
 diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log_sink_file.hpp
 --- a/src/buildtool/logging/log_sink_file.hpp
 +++ b/src/buildtool/logging/log_sink_file.hpp
-@@ -120,9 +120,14 @@ class LogSinkFile final : public ILogSink {
+@@ -121,9 +121,14 @@ class LogSinkFile final : public ILogSink {
  
          if (logger != nullptr) {
              // append logger name
@@ -69,7 +69,7 @@ diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log
          const auto* cont_prefix = "  ";
  
          {
-@@ -131,7 +136,7 @@ class LogSinkFile final : public ILogSink {
+@@ -132,7 +137,7 @@ class LogSinkFile final : public ILogSink {
                  using it = std::istream_iterator<ILogSink::Line>;
                  std::istringstream iss{msg};
                  for_each(it{iss}, it{}, [&](auto const& line) {

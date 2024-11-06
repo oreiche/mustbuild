@@ -9,20 +9,20 @@ Subject: [progress] GraphTraverser: Print number of omitted actions
 diff --git a/src/buildtool/graph_traverser/graph_traverser.hpp b/src/buildtool/graph_traverser/graph_traverser.hpp
 --- a/src/buildtool/graph_traverser/graph_traverser.hpp
 +++ b/src/buildtool/graph_traverser/graph_traverser.hpp
-@@ -465,11 +465,15 @@ class GraphTraverser {
+@@ -445,11 +445,15 @@ class GraphTraverser {
              Logger::Log(logger_, LogLevel::Info, ss.str());
          }
          else {
-+            int queued = stats_->ActionsQueuedCounter();
-+            int omitted = progress_->OriginMap().size() - queued;
++            int queued = stats.ActionsQueuedCounter();
++            int omitted = context_.progress->OriginMap().size() - queued;
              Logger::Log(logger_,
                          LogLevel::Info,
 -                        "Processed {} actions, {} cache hits.",
--                        stats_->ActionsQueuedCounter(),
--                        stats_->ActionsCachedCounter());
+-                        stats.ActionsQueuedCounter(),
+-                        stats.ActionsCachedCounter());
 +                        "Processed {} actions, {} cache hits{}.",
 +                        queued,
-+                        stats_->ActionsCachedCounter(),
++                        stats.ActionsCachedCounter(),
 +                        omitted > 0 ? fmt::format(", {} omitted", omitted)
 +                                    : std::string{});
          }
