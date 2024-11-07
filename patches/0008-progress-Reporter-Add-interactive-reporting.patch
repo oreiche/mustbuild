@@ -6,7 +6,7 @@ Subject: [progress] Reporter: Add interactive reporting
  bin/bootstrap.py                              |   2 +-
  src/buildtool/common/cli.hpp                  |  22 +++-
  src/buildtool/common/clidefaults.hpp          |   3 +
- src/buildtool/main/main.cpp                   |   7 +-
+ src/buildtool/main/main.cpp                   |   5 +-
  src/buildtool/progress_reporting/TARGETS      |   1 +
  .../base_progress_reporter.cpp                |  13 +-
  .../base_progress_reporter.hpp                |   6 +-
@@ -14,10 +14,9 @@ Subject: [progress] Reporter: Add interactive reporting
  .../progress_reporting/progress_reporter.hpp  |   5 +-
  src/other_tools/just_mr/cli.hpp               |  24 +++-
  src/other_tools/just_mr/launch.cpp            |  14 ++
- 11 files changed, 201 insertions(+), 19 deletions(-)
+ 11 files changed, 200 insertions(+), 18 deletions(-)
 
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index 4747f084..951dedaf 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -467,7 +467,7 @@ def bootstrap() -> None:
@@ -30,11 +29,10 @@ index 4747f084..951dedaf 100755
          cwd=src_wrkdir)
  
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index 57567cf7..76a8a9d0 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -53,6 +53,8 @@ struct LogArguments {
-     std::optional<LogLevel> restrict_stderr_log_limit{};
+@@ -55,6 +55,8 @@ struct LogArguments {
+     std::optional<LogLevel> restrict_stderr_log_limit;
      bool plain_log{false};
      bool log_append{false};
 +    std::size_t prog_interval{kDefaultProgInterval};
@@ -42,7 +40,7 @@ index 57567cf7..76a8a9d0 100644
  };
  
  /// \brief Arguments required for analysing targets.
-@@ -256,13 +258,27 @@ static inline auto SetupLogArguments(
+@@ -263,13 +265,27 @@ static inline auto SetupLogArguments(
             "Restrict logging on console to the minimum of the specified "
             "--log-limit and this value")
          ->type_name("NUM");
@@ -74,7 +72,6 @@ index 57567cf7..76a8a9d0 100644
  
  static inline auto SetupAnalysisArguments(
 diff --git a/src/buildtool/common/clidefaults.hpp b/src/buildtool/common/clidefaults.hpp
-index 88c55b2e..e0e72cbf 100644
 --- a/src/buildtool/common/clidefaults.hpp
 +++ b/src/buildtool/common/clidefaults.hpp
 @@ -21,6 +21,9 @@
@@ -88,25 +85,21 @@ index 88c55b2e..e0e72cbf 100644
      std::vector<std::string>{"env", "--"};
  
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index c7525c88..c4093a65 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -908,8 +908,11 @@ auto main(int argc, char* argv[]) -> int {
-             &stats,
-             &progress,
-             &main_apis,
+@@ -1006,7 +1006,10 @@ auto main(int argc, char* argv[]) -> int {
+              std::move(stage_args),
+              std::move(rebuild_args)},
+             &exec_context,
 -            ProgressReporter::Reporter(&stats, &progress)};
--
-+            ProgressReporter::Reporter(&stats,
-+                                       &progress,
++            ProgressReporter::Reporter(&stats, &progress,
 +                                       /*logger=*/nullptr,
 +                                       /*fancy=*/true,
 +                                       arguments.log)};
+ 
          if (arguments.cmd == SubCommand::kInstallCas) {
-             if (not repo_config.SetGitCAS(StorageConfig::GitRoot())) {
-                 Logger::Log(LogLevel::Debug,
+             if (not repo_config.SetGitCAS(storage_config->GitRoot())) {
 diff --git a/src/buildtool/progress_reporting/TARGETS b/src/buildtool/progress_reporting/TARGETS
-index adc6f8c5..2629b32e 100644
 --- a/src/buildtool/progress_reporting/TARGETS
 +++ b/src/buildtool/progress_reporting/TARGETS
 @@ -28,6 +28,7 @@
@@ -118,7 +111,6 @@ index adc6f8c5..2629b32e 100644
      , ["src/buildtool/logging", "logging"]
      ]
 diff --git a/src/buildtool/progress_reporting/base_progress_reporter.cpp b/src/buildtool/progress_reporting/base_progress_reporter.cpp
-index 7cec5001..080955a6 100644
 --- a/src/buildtool/progress_reporting/base_progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/base_progress_reporter.cpp
 @@ -35,22 +35,23 @@ void CallReport(std::function<void(void)> const& report) noexcept {
@@ -152,7 +144,6 @@ index 7cec5001..080955a6 100644
          if (called) {
              // call a final time to print the latest state
 diff --git a/src/buildtool/progress_reporting/base_progress_reporter.hpp b/src/buildtool/progress_reporting/base_progress_reporter.hpp
-index 08bb0d74..6bedb7a0 100644
 --- a/src/buildtool/progress_reporting/base_progress_reporter.hpp
 +++ b/src/buildtool/progress_reporting/base_progress_reporter.hpp
 @@ -29,7 +29,11 @@ using progress_reporter_t =
@@ -169,7 +160,6 @@ index 08bb0d74..6bedb7a0 100644
    private:
      constexpr static std::int64_t kStartDelayMillis = 3000;
 diff --git a/src/buildtool/progress_reporting/progress_reporter.cpp b/src/buildtool/progress_reporting/progress_reporter.cpp
-index 2e8de0a4..d1554bdf 100644
 --- a/src/buildtool/progress_reporting/progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/progress_reporter.cpp
 @@ -16,13 +16,134 @@
@@ -309,7 +299,6 @@ index 2e8de0a4..d1554bdf 100644
          int total = gsl::narrow<int>(progress->OriginMap().size());
          int digits = static_cast<int>(log10(total)) + 1;
 diff --git a/src/buildtool/progress_reporting/progress_reporter.hpp b/src/buildtool/progress_reporting/progress_reporter.hpp
-index 13136579..0ea0cace 100644
 --- a/src/buildtool/progress_reporting/progress_reporter.hpp
 +++ b/src/buildtool/progress_reporting/progress_reporter.hpp
 @@ -16,6 +16,7 @@
@@ -332,11 +321,10 @@ index 13136579..0ea0cace 100644
  };
  
 diff --git a/src/other_tools/just_mr/cli.hpp b/src/other_tools/just_mr/cli.hpp
-index 37ef132f..84720cf7 100644
 --- a/src/other_tools/just_mr/cli.hpp
 +++ b/src/other_tools/just_mr/cli.hpp
-@@ -65,6 +65,8 @@ struct MultiRepoLogArguments {
-     std::optional<LogLevel> restrict_stderr_log_limit{};
+@@ -66,6 +66,8 @@ struct MultiRepoLogArguments {
+     std::optional<LogLevel> restrict_stderr_log_limit;
      bool plain_log{false};
      bool log_append{false};
 +    std::size_t prog_interval{kDefaultProgInterval};
@@ -344,16 +332,16 @@ index 37ef132f..84720cf7 100644
  };
  
  struct MultiRepoSetupArguments {
-@@ -100,7 +102,7 @@ struct ForwardOnlyArguments {
-     std::vector<std::string> remote_execution_properties{};
+@@ -101,7 +103,7 @@ struct ForwardOnlyArguments {
+     std::vector<std::string> remote_execution_properties;
  };
  
 -namespace MR { // to avoid clash with backend (just) types
 +namespace MR {  // to avoid clash with backend (just) types
  
- enum class SubCommand {
+ enum class SubCommand : std::uint8_t {
      kUnknown,
-@@ -286,13 +288,27 @@ static inline auto SetupMultiRepoLogArguments(
+@@ -288,13 +290,27 @@ static inline auto SetupMultiRepoLogArguments(
             "Restrict logging on console to the minimum of the specified "
             "--log-limit and this value")
          ->type_name("NUM");
@@ -385,10 +373,9 @@ index 37ef132f..84720cf7 100644
  
  static inline void SetupMultiRepoSetupArguments(
 diff --git a/src/other_tools/just_mr/launch.cpp b/src/other_tools/just_mr/launch.cpp
-index ae5abb3b..c0c6b906 100644
 --- a/src/other_tools/just_mr/launch.cpp
 +++ b/src/other_tools/just_mr/launch.cpp
-@@ -139,6 +139,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
+@@ -157,6 +157,20 @@ auto CallJust(std::optional<std::filesystem::path> const& config_file,
      }
      if (log_args.plain_log) {
          cmd.emplace_back("--plain-log");

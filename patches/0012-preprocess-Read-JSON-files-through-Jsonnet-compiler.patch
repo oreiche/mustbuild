@@ -13,7 +13,6 @@ Subject: [preprocess] Read JSON files through Jsonnet compiler
  create mode 100644 src/jsonnet/builtins.libsonnet
 
 diff --git a/src/buildtool/build_engine/base_maps/json_file_map.hpp b/src/buildtool/build_engine/base_maps/json_file_map.hpp
-index ad697ac9..d7c646e0 100644
 --- a/src/buildtool/build_engine/base_maps/json_file_map.hpp
 +++ b/src/buildtool/build_engine/base_maps/json_file_map.hpp
 @@ -95,7 +95,7 @@ auto CreateJsonFileMap(
@@ -26,10 +25,9 @@ index ad697ac9..d7c646e0 100644
              (*logger)(fmt::format("cannot read JSON file {}.",
                                    json_file_path.string()),
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
-index f53364a1..774fe445 100644
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
-@@ -157,7 +157,8 @@
+@@ -163,7 +163,8 @@
  , "file_root":
    { "type": ["@", "rules", "CC", "library"]
    , "name": ["file_root"]
@@ -38,12 +36,11 @@ index f53364a1..774fe445 100644
 +  , "private-hdrs": [["src/jsonnet", "builtins.h"]]
    , "srcs": ["file_root.cpp"]
    , "deps":
-     [ "git_tree"
+     [ "file_system_manager"
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index c4093a65..a1ee9af3 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -463,7 +463,7 @@ void SetupFileChunker() {
+@@ -421,7 +421,7 @@ void StoreTargetCacheShard(
          Logger::Log(LogLevel::Error, "Expected file at {}.", target_file);
          std::exit(kExitFailure);
      }
@@ -83,7 +80,7 @@ index 00000000..19df5dee
 +}
 diff --git a/src/jsonnet/builtins.libsonnet b/src/jsonnet/builtins.libsonnet
 new file mode 100644
-index 00000000..a8b5be5f
+index 00000000..11fd2878
 --- /dev/null
 +++ b/src/jsonnet/builtins.libsonnet
 @@ -0,0 +1,1359 @@
@@ -562,7 +559,7 @@ index 00000000..a8b5be5f
 +/// Example:
 +/// ```jsonnet
 +/// // evaluates to ["x","y"]
-+/// keys(map({a:'x',b:'y'}))
++/// values(map({a:'x',b:'y'}))
 +/// ```
 +///
 +/// > See also [`map()`](#map).
@@ -636,7 +633,7 @@ index 00000000..a8b5be5f
 +/// `map_enum`(`list`: *list-expr*) -> *map-expr*
 +///
 +/// | Argument | Description | Default value |
-+/// |-|:-|
++/// |-|:-|:-:|
 +/// | `list` | List-expression to generate the map from | None |
 +///
 +/// Example:

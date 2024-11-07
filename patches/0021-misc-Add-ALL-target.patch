@@ -9,7 +9,6 @@ Subject: [misc] Add ALL target
  2 files changed, 29 insertions(+), 1 deletion(-)
 
 diff --git a/TARGETS b/TARGETS
-index 682d0745..8a3fee97 100644
 --- a/TARGETS
 +++ b/TARGETS
 @@ -115,6 +115,32 @@
@@ -46,7 +45,6 @@ index 682d0745..8a3fee97 100644
    { "type": "configure"
    , "target": ["@", "libgit2", "", "git2"]
 diff --git a/bin/bootstrap.py b/bin/bootstrap.py
-index ac54140c..c1a52b1f 100755
 --- a/bin/bootstrap.py
 +++ b/bin/bootstrap.py
 @@ -34,6 +34,8 @@ Json = Dict[str, Any]

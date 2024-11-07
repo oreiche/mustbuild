@@ -14,7 +14,6 @@ Subject: [preprocess] FileRoot: Use Jsonnet for reading files
  create mode 100644 src/buildtool/file_system/file_root.cpp
 
 diff --git a/etc/dev/TARGETS b/etc/dev/TARGETS
-index 3d194b96..c3bd22b8 100644
 --- a/etc/dev/TARGETS
 +++ b/etc/dev/TARGETS
 @@ -19,6 +19,7 @@
@@ -26,7 +25,6 @@ index 3d194b96..c3bd22b8 100644
      , ["", "libcurl"]
      , ["", "libarchive"]
 diff --git a/etc/repos.json b/etc/repos.json
-index ad0430ca..7f2cbe16 100644
 --- a/etc/repos.json
 +++ b/etc/repos.json
 @@ -16,6 +16,7 @@
@@ -38,10 +36,9 @@ index ad0430ca..7f2cbe16 100644
      , "bootstrap": {"link": ["-pthread"]}
      , "bootstrap_local": {"link": ["-pthread"]}
 diff --git a/src/buildtool/file_system/TARGETS b/src/buildtool/file_system/TARGETS
-index 51a8e077..f53364a1 100644
 --- a/src/buildtool/file_system/TARGETS
 +++ b/src/buildtool/file_system/TARGETS
-@@ -157,7 +157,8 @@
+@@ -163,12 +163,14 @@
  , "file_root":
    { "type": ["@", "rules", "CC", "library"]
    , "name": ["file_root"]
@@ -49,19 +46,22 @@ index 51a8e077..f53364a1 100644
 +  , "hdrs": ["file_root.hpp", ["src/jsonnet", "builtins.h"]]
 +  , "srcs": ["file_root.cpp"]
    , "deps":
-     [ "git_tree"
-     , "file_system_manager"
-@@ -165,8 +166,10 @@
-     , ["src/buildtool/compatibility", "compatibility"]
-     , ["src/buildtool/logging", "log_level"]
-     , ["src/buildtool/logging", "logging"]
-+    , ["src/buildtool/multithreading", "atomic_value"]
+     [ "file_system_manager"
+     , "git_tree"
      , ["@", "gsl", "", "gsl"]
      , ["@", "json", "", "json"]
 +    , ["@", "jsonnet", "", "jsonnet"]
+     , ["src/buildtool/common", "artifact_description"]
+     , ["src/buildtool/common", "artifact_digest_factory"]
+     , ["src/buildtool/common", "common"]
+@@ -177,6 +179,7 @@
+     , ["src/buildtool/crypto", "hash_function"]
+     , ["src/buildtool/logging", "log_level"]
+     , ["src/buildtool/logging", "logging"]
++    , ["src/buildtool/multithreading", "atomic_value"]
      , ["src/utils/cpp", "concepts"]
+     , ["src/utils/cpp", "json"]
      ]
-   , "stage": ["src", "buildtool", "file_system"]
 diff --git a/src/buildtool/file_system/builtins.h b/src/buildtool/file_system/builtins.h
 new file mode 100644
 index 00000000..5995b8b9
@@ -290,15 +290,15 @@ index 00000000..1d54b9c1
 +#endif  // BOOTSTRAP_BUILD_TOOL
 +}
 diff --git a/src/buildtool/file_system/file_root.hpp b/src/buildtool/file_system/file_root.hpp
-index eff4d450..9c5dbe69 100644
 --- a/src/buildtool/file_system/file_root.hpp
 +++ b/src/buildtool/file_system/file_root.hpp
-@@ -31,8 +31,14 @@
+@@ -35,9 +35,15 @@
  #include "src/buildtool/file_system/git_tree.hpp"
  #include "src/buildtool/logging/log_level.hpp"
  #include "src/buildtool/logging/logger.hpp"
 +#include "src/buildtool/multithreading/atomic_value.hpp"
  #include "src/utils/cpp/concepts.hpp"
+ #include "src/utils/cpp/json.hpp"
  
 +namespace Jsonnet {
 +class Compiler;
@@ -308,7 +308,7 @@ index eff4d450..9c5dbe69 100644
  /// FilteredIterator is an helper class to allow for iteration over
  /// directory-only or file-only entries stored inside the class
  /// DirectoryEntries. Internally, DirectoryEntries holds a
-@@ -513,6 +519,15 @@ class FileRoot {
+@@ -517,6 +523,15 @@ class FileRoot {
          return DirectoryEntries{DirectoryEntries::pairs_t{}};
      }
  
@@ -323,8 +323,8 @@ index eff4d450..9c5dbe69 100644
 +
      [[nodiscard]] auto BlobType(std::filesystem::path const& file_path)
          const noexcept -> std::optional<ObjectType> {
-         if (std::holds_alternative<git_root_t>(root_)) {
-@@ -733,6 +748,7 @@ class FileRoot {
+         if (std::holds_alternative<RootGit>(root_)) {
+@@ -751,6 +766,7 @@ class FileRoot {
      // directories instead of erroring out. This means implicitly also that
      // there are no more fast tree lookups, i.e., tree traversal is a must.
      bool ignore_special_{};

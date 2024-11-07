@@ -9,10 +9,9 @@ Subject: [progress] Logger: Drop prefix for LogLevel::Progress
  3 files changed, 17 insertions(+), 7 deletions(-)
 
 diff --git a/src/buildtool/logging/log_level.hpp b/src/buildtool/logging/log_level.hpp
-index 65b7b7c2..6323bde5 100644
 --- a/src/buildtool/logging/log_level.hpp
 +++ b/src/buildtool/logging/log_level.hpp
-@@ -68,7 +68,7 @@ constexpr auto kLastLogLevel = LogLevel::Trace;
+@@ -69,7 +69,7 @@ constexpr auto kLastLogLevel = LogLevel::Trace;
          case LogLevel::Info:
              return "INFO";
          case LogLevel::Progress:
@@ -22,7 +21,6 @@ index 65b7b7c2..6323bde5 100644
              return "PERF";
          case LogLevel::Debug:
 diff --git a/src/buildtool/logging/log_sink_cmdline.hpp b/src/buildtool/logging/log_sink_cmdline.hpp
-index 4219f95c..5c2e07e1 100644
 --- a/src/buildtool/logging/log_sink_cmdline.hpp
 +++ b/src/buildtool/logging/log_sink_cmdline.hpp
 @@ -68,9 +68,14 @@ class LogSinkCmdLine final : public ILogSink {
@@ -52,10 +50,9 @@ index 4219f95c..5c2e07e1 100644
              });
              std::fflush(stderr);
 diff --git a/src/buildtool/logging/log_sink_file.hpp b/src/buildtool/logging/log_sink_file.hpp
-index 20313463..c0a2bc81 100644
 --- a/src/buildtool/logging/log_sink_file.hpp
 +++ b/src/buildtool/logging/log_sink_file.hpp
-@@ -120,9 +120,14 @@ class LogSinkFile final : public ILogSink {
+@@ -121,9 +121,14 @@ class LogSinkFile final : public ILogSink {
  
          if (logger != nullptr) {
              // append logger name
@@ -72,7 +69,7 @@ index 20313463..c0a2bc81 100644
          const auto* cont_prefix = "  ";
  
          {
-@@ -131,7 +136,7 @@ class LogSinkFile final : public ILogSink {
+@@ -132,7 +137,7 @@ class LogSinkFile final : public ILogSink {
                  using it = std::istream_iterator<ILogSink::Line>;
                  std::istringstream iss{msg};
                  for_each(it{iss}, it{}, [&](auto const& line) {
