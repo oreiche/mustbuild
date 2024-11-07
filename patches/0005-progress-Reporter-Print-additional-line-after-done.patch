@@ -7,7 +7,6 @@ Subject: [progress] Reporter: Print additional line after done
  1 file changed, 20 insertions(+), 9 deletions(-)
 
 diff --git a/src/buildtool/progress_reporting/base_progress_reporter.cpp b/src/buildtool/progress_reporting/base_progress_reporter.cpp
-index 4c92ec5d..7cec5001 100644
 --- a/src/buildtool/progress_reporting/base_progress_reporter.cpp
 +++ b/src/buildtool/progress_reporting/base_progress_reporter.cpp
 @@ -22,6 +22,19 @@

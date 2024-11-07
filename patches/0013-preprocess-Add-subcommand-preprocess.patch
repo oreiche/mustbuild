@@ -13,7 +13,6 @@ Subject: [preprocess] Add subcommand 'preprocess'
  7 files changed, 118 insertions(+), 10 deletions(-)
 
 diff --git a/share/man/must-backend.5.md b/share/man/must-backend.5.md
-index d6318d20..3230807e 100644
 --- a/share/man/must-backend.5.md
 +++ b/share/man/must-backend.5.md
 @@ -8,6 +8,7 @@ must backend - Backend for **`must`**(1), handling build-related subcommands.
@@ -37,7 +36,7 @@ index d6318d20..3230807e 100644
  **`analyse`**|**`build`**|**`install`**
  ---------------------------------------
  
-@@ -425,29 +432,29 @@ Path to local log file. **`must`** will store the information printed on
+@@ -430,29 +437,29 @@ Path to local log file. **`must`** will store the information printed on
  stderr in the log file along with the thread id and timestamp when the
  output has been generated.  
  Supported by:
@@ -72,7 +71,7 @@ index d6318d20..3230807e 100644
  
  **`--expression-log-limit`** *`NUM`*  
  In error messages, truncate the entries in the enumeration of the active
-@@ -528,6 +535,11 @@ Ensure that all installed artifacts are available in local CAS as well,
+@@ -533,6 +540,11 @@ Ensure that all installed artifacts are available in local CAS as well,
  even when using remote execution.  
  Supported by: install|traverse|install-cas.
  
@@ -85,7 +84,6 @@ index d6318d20..3230807e 100644
  -------------------
  
 diff --git a/share/man/must.1.md b/share/man/must.1.md
-index b87fb26a..4e8cdb29 100644
 --- a/share/man/must.1.md
 +++ b/share/man/must.1.md
 @@ -12,7 +12,7 @@ SYNOPSIS
@@ -98,11 +96,10 @@ index b87fb26a..4e8cdb29 100644
  DESCRIPTION
  ===========
 diff --git a/src/buildtool/common/cli.hpp b/src/buildtool/common/cli.hpp
-index 76a8a9d0..4ba9426d 100644
 --- a/src/buildtool/common/cli.hpp
 +++ b/src/buildtool/common/cli.hpp
-@@ -192,6 +192,11 @@ struct ToAddArguments {
-     bool follow_symlinks{};
+@@ -199,6 +199,11 @@ struct ProtocolArguments final {
+     HashFunction::Type hash_type = HashFunction::Type::GitSHA1;
  };
  
 +struct PreprocessArguments {
@@ -113,7 +110,7 @@ index 76a8a9d0..4ba9426d 100644
  static inline auto SetupCommonArguments(
      gsl::not_null<CLI::App*> const& app,
      gsl::not_null<CommonArguments*> const& clargs) {
-@@ -776,6 +781,17 @@ static inline auto SetupServeArguments(
+@@ -801,6 +806,17 @@ static inline auto SetupServeArguments(
          ->required();
  }
  
@@ -132,7 +129,6 @@ index 76a8a9d0..4ba9426d 100644
                                      gsl::not_null<GcArguments*> const& args) {
      app->add_flag("--no-rotate",
 diff --git a/src/buildtool/main/cli.cpp b/src/buildtool/main/cli.cpp
-index d38c1d30..eac04f3d 100644
 --- a/src/buildtool/main/cli.cpp
 +++ b/src/buildtool/main/cli.cpp
 @@ -170,6 +170,15 @@ auto SetupServeServiceCommandArguments(
@@ -195,10 +191,9 @@ index d38c1d30..eac04f3d 100644
      return clargs;
  }
 diff --git a/src/buildtool/main/cli.hpp b/src/buildtool/main/cli.hpp
-index 5b287fa1..ea71dca9 100644
 --- a/src/buildtool/main/cli.hpp
 +++ b/src/buildtool/main/cli.hpp
-@@ -34,7 +34,8 @@ enum class SubCommand {
+@@ -36,7 +36,8 @@ enum class SubCommand : std::uint8_t {
      kTraverse,
      kGc,
      kExecute,
@@ -208,7 +203,7 @@ index 5b287fa1..ea71dca9 100644
  };
  
  struct CommandLineArguments {
-@@ -56,6 +57,7 @@ struct CommandLineArguments {
+@@ -57,6 +58,7 @@ struct CommandLineArguments {
      ServerAuthArguments sauth;
      ServiceArguments service;
      ServeArguments serve;
@@ -217,10 +212,9 @@ index 5b287fa1..ea71dca9 100644
      GcArguments gc;
      ToAddArguments to_add;
 diff --git a/src/buildtool/main/main.cpp b/src/buildtool/main/main.cpp
-index a1ee9af3..31bce148 100644
 --- a/src/buildtool/main/main.cpp
 +++ b/src/buildtool/main/main.cpp
-@@ -496,11 +496,12 @@ void SetupFileChunker() {
+@@ -454,11 +454,12 @@ void StoreTargetCacheShard(
          .config = std::move(config)};
  }
  
@@ -235,7 +229,7 @@ index a1ee9af3..31bce148 100644
      } catch (std::exception const& e) {
          Logger::Log(LogLevel::Warning,
                      "Failed to determine current working directory ({})",
-@@ -855,6 +856,57 @@ auto main(int argc, char* argv[]) -> int {
+@@ -920,6 +921,57 @@ auto main(int argc, char* argv[]) -> int {
              return kExitFailure;
          }
  
@@ -291,13 +285,12 @@ index a1ee9af3..31bce148 100644
 +        }
 +
          // If no execution endpoint was given, the client should default to the
-         // serve endpoint, if given
-         if (not RemoteExecutionConfig::RemoteAddress() and
+         // serve endpoint, if given.
+         if (not arguments.endpoint.remote_execution_address.has_value() and
 diff --git a/src/other_tools/just_mr/utils.hpp b/src/other_tools/just_mr/utils.hpp
-index 6963b068..895cc402 100644
 --- a/src/other_tools/just_mr/utils.hpp
 +++ b/src/other_tools/just_mr/utils.hpp
-@@ -147,7 +147,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
+@@ -148,7 +148,16 @@ std::map<std::string, JustSubCmdFlags> const kKnownJustSubcommands{
        .remote = true,
        .remote_props = true,
        .serve = false,
