@@ -1,9 +1,6 @@
 name: Build and Deploy
 
 on:
-  schedule:
-    # schedule runs on Sunday and Wednesday to keep the cache alive
-    - cron: '00 00 * * 0,3'
   push:
     branches:
       - testing*
@@ -22,7 +19,7 @@ jobs:
 
       - name: Compute base commit
         run: |
-          git fetch https://github.com/oreiche/mustbuild master
+          git fetch https://github.com/oreiche/mustbuild stable-1.1
           BASE_COMMIT="$(git merge-base ${GITHUB_REF_NAME} FETCH_HEAD)"
           echo "BASE_COMMIT=${BASE_COMMIT}" >> $GITHUB_ENV
 
@@ -90,7 +87,7 @@ jobs:
 
       - name: Compute base commit
         run: |
-          git fetch https://github.com/oreiche/mustbuild master
+          git fetch https://github.com/oreiche/mustbuild stable-1.1
           BASE_COMMIT="$(git merge-base ${GITHUB_REF_NAME} FETCH_HEAD)"
           echo "BASE_COMMIT=${BASE_COMMIT}" >> $GITHUB_ENV
 
